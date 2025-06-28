@@ -17,7 +17,7 @@ const config = {
             debug: false
         }
     },
-    scene: [MenuScene, GameScene]
+    scene: [LoadingScene, MenuScene, GameScene]
 };
 
 // Create and start the game
