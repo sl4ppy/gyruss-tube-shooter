@@ -4,7 +4,7 @@ A retro arcade "tube shooter" game inspired by Gyruss, built with Phaser.js. The
 
 ## 🎮 Live Demo
 
-**[Play the Game Online](https://your-username.github.io/your-repo-name/)**
+**[Play the Game Online](https://sl4ppy.github.io/gyruss-tube-shooter/)**
 
 ## Features
 
