@@ -42,16 +42,17 @@ class CollisionManager {
                 this.scene.audioManager.playEnemyDeath();
             }
             
+            // Clean up pattern indicator
+            if (enemy.patternIndicator) {
+                enemy.patternIndicator.destroy();
+            }
+            
             bullet.destroy();
             enemy.destroy();
             
-            this.scene.score += 100;
-            this.scene.updateScore();
+            // Award points for enemy destruction
+            this.scene.addScore(100);
             
-            // Check for level progression
-            if (this.scene.enemyManager.getEnemyCount() === 0) {
-                this.scene.nextLevel();
-            }
         } catch (error) {
             console.error('CollisionManager: Error in hitEnemy:', error);
             window.gameErrorHandler.handleSystemError('CollisionManager', error, { phase: 'enemy_hit' });

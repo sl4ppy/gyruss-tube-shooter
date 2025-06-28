@@ -19,11 +19,20 @@ class GameScene extends Phaser.Scene {
         this.collisionManager = null;
         this.audioManager = null;
         this.touchController = null;
+        this.waveManager = null;
+        
+        // Tunnel Effect Systems
+        this.tunnelSystem = null;
+        this.spiralGenerator = null;
+        this.starfieldSystem = null;
+        this.enhancedEnemyMovement = null;
         
         // UI elements
         this.scoreText = null;
         this.livesText = null;
         this.levelText = null;
+        this.phaseText = null;
+        this.waveText = null;
         
         // Input
         this.restartKey = null;
@@ -34,37 +43,65 @@ class GameScene extends Phaser.Scene {
         console.log('=== GameScene create() started ===');
         
         try {
-            // Initialize audio manager first
-            console.log('1. Creating AudioManager...');
+            // Initialize tunnel effect systems first
+            console.log('1. Creating TunnelCoordinateSystem...');
+            this.tunnelSystem = new TunnelCoordinateSystem(this.game.config.width, this.game.config.height);
+            console.log('✓ TunnelCoordinateSystem created successfully');
+            
+            console.log('2. Creating SpiralPathGenerator...');
+            this.spiralGenerator = new SpiralPathGenerator(this.tunnelSystem);
+            console.log('✓ SpiralPathGenerator created successfully');
+            
+            console.log('3. Creating StarfieldSystem...');
+            this.starfieldSystem = new StarfieldSystem(this, this.tunnelSystem);
+            console.log('✓ StarfieldSystem created successfully');
+            
+            console.log('4. Creating EnhancedEnemyMovement...');
+            this.enhancedEnemyMovement = new EnhancedEnemyMovement(this, this.tunnelSystem, this.spiralGenerator);
+            console.log('✓ EnhancedEnemyMovement created successfully');
+            
+            // Initialize audio manager
+            console.log('5. Creating AudioManager...');
             this.audioManager = new AudioManager(this);
             console.log('✓ AudioManager created successfully');
             
             // Initialize managers one by one with detailed error checking
             console.log('=== Initializing managers ===');
             
-            console.log('2. Creating BulletManager...');
+            console.log('6. Creating BulletManager...');
             this.bulletManager = new BulletManager(this);
             console.log('✓ BulletManager created successfully');
             
-            console.log('3. Creating EffectsManager...');
+            console.log('7. Creating EffectsManager...');
             this.effectsManager = new EffectsManager(this);
             console.log('✓ EffectsManager created successfully');
             
-            console.log('4. Creating Player...');
+            console.log('8. Creating Player...');
             this.player = new Player(this);
             console.log('✓ Player created successfully');
             
-            console.log('5. Creating EnemyManager...');
+            console.log('9. Creating EnemyManager...');
             this.enemyManager = new EnemyManager(this);
             console.log('✓ EnemyManager created successfully');
             
-            console.log('6. Creating CollisionManager...');
+            console.log('10. Creating CollisionManager...');
             this.collisionManager = new CollisionManager(this, this.player, this.bulletManager);
             console.log('✓ CollisionManager created successfully');
             
-            console.log('7. Creating TouchController...');
+            console.log('11. Creating TouchController...');
             this.touchController = new TouchController(this);
             console.log('✓ TouchController created successfully');
+            
+            console.log('12. Creating WaveManager...');
+            this.waveManager = new WaveManager(this);
+            console.log('✓ WaveManager created successfully');
+            
+            // Connect tunnel systems to managers that need them
+            console.log('13. Connecting tunnel systems...');
+            if (this.enemyManager && this.enhancedEnemyMovement && this.tunnelSystem && this.spiralGenerator) {
+                this.enemyManager.setTunnelSystems(this.enhancedEnemyMovement, this.tunnelSystem, this.spiralGenerator);
+                console.log('✓ Tunnel systems connected to EnemyManager');
+            }
             
         } catch (error) {
             console.error('❌ Error initializing managers:', error);
@@ -82,13 +119,9 @@ class GameScene extends Phaser.Scene {
         // Start game
         console.log('=== Starting game ===');
         try {
-            console.log('Spawning enemy formation...');
-            this.enemyManager.spawnEnemyFormation();
-            console.log('✓ Enemy formation spawned');
-            
-            console.log('Adding enemy visual effects...');
-            this.effectsManager.addEnemyVisualEffects(this.enemyManager.getEnemies());
-            console.log('✓ Enemy visual effects added');
+            console.log('Starting wave-based game loop...');
+            this.waveManager.startGame();
+            console.log('✓ Wave-based game loop started');
             
             // Play level start sound
             this.audioManager.playLevelUp();
@@ -115,6 +148,16 @@ class GameScene extends Phaser.Scene {
         this.levelText = this.add.text(16, 84, 'Level: ' + this.level, {
             fontSize: '24px',
             fill: '#fff'
+        });
+        
+        this.phaseText = this.add.text(16, 118, 'Phase: 1', {
+            fontSize: '20px',
+            fill: '#00ff00'
+        });
+        
+        this.waveText = this.add.text(16, 142, 'Wave: 1', {
+            fontSize: '20px',
+            fill: '#ffff00'
         });
         
         // Add audio controls
@@ -160,6 +203,12 @@ class GameScene extends Phaser.Scene {
     
     update() {
         try {
+            // Update starfield system
+            if (this.starfieldSystem && this.player) {
+                const playerAngle = this.player.getAngle();
+                this.starfieldSystem.updateStarfield(playerAngle, this.game.loop.delta);
+            }
+            
             // Update player
             if (this.player && this.player.sprite.active) {
                 this.player.update();
@@ -170,8 +219,16 @@ class GameScene extends Phaser.Scene {
                 this.touchController.update();
             }
             
-            // Update enemy movement
-            if (this.enemyManager) {
+            // Update enemy movement using new tunnel system
+            if (this.enemyManager && this.enhancedEnemyMovement) {
+                // Update existing enemies with new movement system
+                this.enemyManager.getEnemies().children.entries.forEach(enemy => {
+                    if (enemy.active && enemy.enemyState) {
+                        this.enhancedEnemyMovement.updateEnemyMovement(enemy.enemyState, this.game.loop.delta / 1000);
+                    }
+                });
+                
+                // Also update the old system for compatibility
                 this.enemyManager.updateEnemyMovement();
             }
             
@@ -202,6 +259,29 @@ class GameScene extends Phaser.Scene {
     
     updateScore() {
         this.scoreText.setText('Score: ' + this.score);
+    }
+    
+    addScore(points) {
+        this.score += points;
+        this.updateScore();
+        
+        // Show score popup
+        const scorePopup = this.add.text(GameConfig.centerX, GameConfig.centerY - 150, 
+            `+${points}`, {
+            fontSize: '28px',
+            fill: '#ffff00',
+            fontFamily: 'Courier New',
+            fontWeight: 'bold'
+        }).setOrigin(0.5);
+        
+        // Animate and remove
+        this.tweens.add({
+            targets: scorePopup,
+            y: scorePopup.y - 50,
+            alpha: 0,
+            duration: 1000,
+            onComplete: () => scorePopup.destroy()
+        });
     }
     
     updateLives() {
@@ -262,18 +342,23 @@ class GameScene extends Phaser.Scene {
         this.player.reset();
         this.enemyManager.reset();
         this.bulletManager.reset();
+        this.waveManager.reset();
         
         // Update UI
         this.updateScore();
         this.updateLives();
         this.levelText.setText('Level: ' + this.level);
+        this.updatePhaseDisplay();
         
-        // Spawn new enemies
-        this.enemyManager.spawnEnemyFormation();
-        this.effectsManager.addEnemyVisualEffects(this.enemyManager.getEnemies());
-        
-        // Play restart sound
-        this.audioManager.playLevelUp();
+        // Start new game
+        this.waveManager.startGame();
+    }
+    
+    updatePhaseDisplay() {
+        if (this.phaseText && this.waveText) {
+            this.phaseText.setText('Phase: ' + this.waveManager.getCurrentPhase());
+            this.waveText.setText('Wave: ' + this.waveManager.getCurrentWave());
+        }
     }
 }
 
