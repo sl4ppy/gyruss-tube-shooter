@@ -1,13 +1,11 @@
 /**
  * Audio Manager Class
- * Handles all audio functionality with fallback support and volume control
+ * Handles all audio functionality with procedural sound generation
  */
 
 class AudioManager {
     constructor(scene) {
         this.scene = scene;
-        this.sounds = new Map();
-        this.music = null;
         this.volume = 0.7;
         this.musicVolume = 0.5;
         this.enabled = true;
@@ -32,50 +30,43 @@ class AudioManager {
         }
     }
     
-    preload() {
-        if (!this.enabled) return;
-        
-        console.log('AudioManager: Preloading audio assets...');
-        
-        // Load sound effects
-        Object.entries(GameConfig.assets.audio).forEach(([key, path]) => {
-            try {
-                const sound = this.scene.sound.add(key, {
-                    volume: this.volume,
-                    loop: false
-                });
-                this.sounds.set(key, sound);
-                console.log(`AudioManager: Loaded sound: ${key}`);
-            } catch (error) {
-                console.warn(`AudioManager: Failed to load sound: ${key}`, error);
-            }
-        });
-    }
-    
     play(soundKey, config = {}) {
-        if (!this.enabled) return;
+        if (!this.enabled || !this.audioContext) return;
         
-        const sound = this.sounds.get(soundKey);
-        if (sound) {
-            try {
-                // Resume audio context if suspended (required for autoplay policies)
-                if (this.audioContext && this.audioContext.state === 'suspended') {
-                    this.audioContext.resume();
-                }
-                
-                const playConfig = {
-                    volume: config.volume || this.volume,
-                    rate: config.rate || 1.0,
-                    ...config
-                };
-                
-                sound.play(playConfig);
-                console.log(`AudioManager: Playing sound: ${soundKey}`);
-            } catch (error) {
-                console.warn(`AudioManager: Failed to play sound: ${soundKey}`, error);
+        try {
+            // Resume audio context if suspended (required for autoplay policies)
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
             }
-        } else {
-            console.warn(`AudioManager: Sound not found: ${soundKey}`);
+            
+            const volume = (config.volume || this.volume) * this.volume;
+            
+            switch (soundKey) {
+                case 'shoot':
+                    this.createShootSound(volume);
+                    break;
+                case 'explosion':
+                    this.createExplosionSound(volume);
+                    break;
+                case 'enemyDeath':
+                    this.createEnemyDeathSound(volume);
+                    break;
+                case 'playerHit':
+                    this.createPlayerHitSound(volume);
+                    break;
+                case 'levelUp':
+                    this.createLevelUpSound(volume);
+                    break;
+                case 'powerup':
+                    this.createPowerUpSound(volume);
+                    break;
+                default:
+                    console.warn(`AudioManager: Unknown sound: ${soundKey}`);
+            }
+            
+            console.log(`AudioManager: Playing procedural sound: ${soundKey}`);
+        } catch (error) {
+            console.warn(`AudioManager: Failed to play sound: ${soundKey}`, error);
         }
     }
     
@@ -105,22 +96,11 @@ class AudioManager {
     
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
-        
-        // Update all loaded sounds
-        this.sounds.forEach(sound => {
-            sound.setVolume(this.volume);
-        });
-        
         console.log(`AudioManager: Volume set to ${this.volume}`);
     }
     
     setMusicVolume(volume) {
         this.musicVolume = Math.max(0, Math.min(1, volume));
-        
-        if (this.music) {
-            this.music.setVolume(this.musicVolume);
-        }
-        
         console.log(`AudioManager: Music volume set to ${this.musicVolume}`);
     }
     
@@ -138,23 +118,8 @@ class AudioManager {
         return this.enabled;
     }
     
-    // Create procedural audio for fallback
-    createProceduralAudio() {
-        if (!this.enabled || !this.audioContext) return;
-        
-        console.log('AudioManager: Creating procedural audio fallbacks...');
-        
-        // Create shoot sound
-        this.createShootSound();
-        
-        // Create explosion sound
-        this.createExplosionSound();
-        
-        // Create powerup sound
-        this.createPowerUpSound();
-    }
-    
-    createShootSound() {
+    // Procedural sound generation methods
+    createShootSound(volume = 0.6) {
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -164,14 +129,14 @@ class AudioManager {
         oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
         oscillator.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 0.1);
         
-        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
         
         oscillator.start(this.audioContext.currentTime);
         oscillator.stop(this.audioContext.currentTime + 0.1);
     }
     
-    createExplosionSound() {
+    createExplosionSound(volume = 0.8) {
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -181,14 +146,66 @@ class AudioManager {
         oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
         oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.3);
         
-        gainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
         
         oscillator.start(this.audioContext.currentTime);
         oscillator.stop(this.audioContext.currentTime + 0.3);
     }
     
-    createPowerUpSound() {
+    createEnemyDeathSound(volume = 0.7) {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, this.audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.2);
+    }
+    
+    createPlayerHitSound(volume = 0.9) {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.4);
+        
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.4);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.4);
+    }
+    
+    createLevelUpSound(volume = 0.8) {
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
+        oscillator.frequency.linearRampToValueAtTime(800, this.audioContext.currentTime + 0.3);
+        oscillator.frequency.linearRampToValueAtTime(1200, this.audioContext.currentTime + 0.6);
+        
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.6);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + 0.6);
+    }
+    
+    createPowerUpSound(volume = 0.7) {
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
         
@@ -198,10 +215,12 @@ class AudioManager {
         oscillator.frequency.setValueAtTime(400, this.audioContext.currentTime);
         oscillator.frequency.linearRampToValueAtTime(800, this.audioContext.currentTime + 0.2);
         
-        gainNode.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
         
         oscillator.start(this.audioContext.currentTime);
         oscillator.stop(this.audioContext.currentTime + 0.2);
     }
-} 
+}
+
+window.AudioManager = AudioManager; 

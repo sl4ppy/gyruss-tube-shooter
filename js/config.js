@@ -54,14 +54,6 @@ const GameConfig = {
             greenEnemy: 'assets/green_enemy_ship.png',
             yellowEnemy: 'assets/yellow_enemy_ship.png',
             purpleEnemy: 'assets/purple_enemy_ship.png'
-        },
-        audio: {
-            shoot: 'assets/sounds/shoot.wav',
-            explosion: 'assets/sounds/explosion.wav',
-            powerup: 'assets/sounds/powerup.wav',
-            enemyDeath: 'assets/sounds/enemy_death.wav',
-            playerHit: 'assets/sounds/player_hit.wav',
-            levelUp: 'assets/sounds/level_up.wav'
         }
     },
     

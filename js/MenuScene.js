@@ -86,4 +86,6 @@ class MenuScene extends Phaser.Scene {
         
         console.log('MenuScene create completed');
     }
-} 
+}
+
+window.MenuScene = MenuScene; 

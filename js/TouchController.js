@@ -317,4 +317,6 @@ class TouchController {
     isEnabled() {
         return this.enabled;
     }
-} 
+}
+
+window.TouchController = TouchController; 

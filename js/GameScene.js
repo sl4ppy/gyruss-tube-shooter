@@ -37,7 +37,6 @@ class GameScene extends Phaser.Scene {
             // Initialize audio manager first
             console.log('1. Creating AudioManager...');
             this.audioManager = new AudioManager(this);
-            this.audioManager.preload();
             console.log('✓ AudioManager created successfully');
             
             // Initialize managers one by one with detailed error checking
@@ -278,84 +277,4 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-// Create a centralized GameState class
-class GameState {
-    constructor() {
-        this.score = 0;
-        this.lives = 3;
-        this.level = 1;
-        this.gamePhase = 'menu'; // menu, playing, paused, gameOver
-        this.observers = [];
-    }
-    
-    subscribe(observer) {
-        this.observers.push(observer);
-    }
-    
-    notify(event, data) {
-        this.observers.forEach(observer => observer(event, data));
-    }
-}
-
-class PowerUpManager {
-    constructor(scene) {
-        this.powerUps = ['rapidFire', 'shield', 'multiShot', 'bomb'];
-        this.activePowerUps = new Map();
-    }
-    
-    spawnPowerUp(x, y) {
-        const powerUpType = Phaser.Utils.Array.GetRandom(this.powerUps);
-        const powerUp = new PowerUp(this.scene, x, y, powerUpType);
-        return powerUp;
-    }
-}
-
-class BossManager {
-    constructor(scene) {
-        this.bosses = [
-            new CircleBoss(scene),
-            new SpiralBoss(scene),
-            new WaveBoss(scene)
-        ];
-    }
-    
-    spawnBoss(level) {
-        const bossIndex = Math.floor((level - 1) / 5) % this.bosses.length;
-        return this.bosses[bossIndex];
-    }
-}
-
-class AudioManager {
-    constructor(scene) {
-        this.sounds = new Map();
-        this.music = null;
-        this.volume = 0.7;
-    }
-    
-    preload() {
-        this.scene.load.audio('shoot', 'assets/sounds/shoot.wav');
-        this.scene.load.audio('explosion', 'assets/sounds/explosion.wav');
-        this.scene.load.audio('powerup', 'assets/sounds/powerup.wav');
-    }
-    
-    play(soundKey, config = {}) {
-        const sound = this.sounds.get(soundKey);
-        if (sound) {
-            sound.play(config);
-        }
-    }
-}
-
-class TouchController {
-    constructor(scene) {
-        this.scene = scene;
-        this.touchArea = null;
-        this.setupTouchControls();
-    }
-    
-    setupTouchControls() {
-        // Create touch zones for movement and firing
-        this.createTouchZones();
-        this.setupGestureRecognition();
-    }
-} 
+window.GameScene = GameScene; 

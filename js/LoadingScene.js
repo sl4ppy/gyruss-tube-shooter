@@ -19,9 +19,6 @@ class LoadingScene extends Phaser.Scene {
         // Load images with error handling
         this.loadImages();
         
-        // Load audio with error handling
-        this.loadAudio();
-        
         // Set up load event handlers
         this.setupLoadEvents();
     }
@@ -100,28 +97,6 @@ class LoadingScene extends Phaser.Scene {
         });
     }
     
-    loadAudio() {
-        this.statusText.setText('Loading audio...');
-        
-        // Load audio assets with error handling
-        Object.entries(GameConfig.assets.audio).forEach(([key, path]) => {
-            this.totalAssets++;
-            
-            this.load.on('filecomplete-' + key, () => {
-                this.assetsLoaded++;
-                this.updateProgress();
-            });
-            
-            this.load.on('loaderror', (file) => {
-                console.warn(`Failed to load audio: ${file.key}`);
-                this.assetsLoaded++; // Count as loaded to continue
-                this.updateProgress();
-            });
-            
-            this.load.audio(key, path);
-        });
-    }
-    
     setupLoadEvents() {
         this.load.on('progress', (value) => {
             this.updateProgress(value);
@@ -155,4 +130,6 @@ class LoadingScene extends Phaser.Scene {
             this.scene.start('MenuScene');
         }, remainingTime);
     }
-} 
+}
+
+window.LoadingScene = LoadingScene; 

@@ -270,4 +270,6 @@ class EnemyManager {
         this.enemies.clear(true, true);
         this.enemySpeed = GameConfig.enemySpeed;
     }
-} 
+}
+
+window.EnemyManager = EnemyManager; 

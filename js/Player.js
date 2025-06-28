@@ -27,7 +27,7 @@ class Player {
                 GameConfig.centerY + Math.sin(this.angle) * this.radius,
                 'playerShip'
             );
-            this.sprite.setScale(2.0); // Double size
+            this.sprite.setScale(1.0); // Normal size (50% smaller than before)
             console.log('Player: ✓ Player ship image loaded successfully');
         } catch (error) {
             console.warn('Player: Player ship image not found, using fallback graphics');
@@ -67,7 +67,7 @@ class Player {
                 GameConfig.centerY + Math.sin(this.angle) * this.radius,
                 'fallbackPlayerShip'
             );
-            this.sprite.setScale(2.0);
+            this.sprite.setScale(1.0); // Normal size (50% smaller than before)
             console.log('Player: ✓ Fallback sprite created successfully');
         } catch (error) {
             console.error('Player: Failed to create fallback sprite:', error);
@@ -187,4 +187,6 @@ class Player {
     isDead() {
         return this.lives <= 0;
     }
-} 
+}
+
+window.Player = Player; 

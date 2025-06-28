@@ -201,4 +201,5 @@ class ErrorHandler {
 }
 
 // Create global error handler instance
-window.gameErrorHandler = new ErrorHandler(); 
+window.gameErrorHandler = new ErrorHandler();
+window.ErrorHandler = ErrorHandler; 

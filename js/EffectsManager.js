@@ -8,8 +8,19 @@ class EffectsManager {
         this.scene = scene;
         this.stars = scene.physics.add.group();
         
+        this.createStarTexture();
         this.createStarField();
         this.createExplosionTexture();
+    }
+    
+    createStarTexture() {
+        // Create star texture
+        const starGraphics = this.scene.add.graphics();
+        starGraphics.fillStyle(0xffffff);
+        starGraphics.fillCircle(0, 0, 1);
+        starGraphics.generateTexture('star', 4, 4);
+        starGraphics.destroy();
+        console.log('Star texture created');
     }
     
     createStarField() {
@@ -19,7 +30,21 @@ class EffectsManager {
                 let x = Phaser.Math.Between(0, GameConfig.width);
                 let y = Phaser.Math.Between(0, GameConfig.height);
                 let star = this.stars.create(x, y, 'star');
+                
+                // Add variety to star sizes and speeds
+                const scale = Phaser.Math.FloatBetween(0.5, 1.5);
+                star.setScale(scale);
                 star.setVelocityY(Phaser.Math.Between(20, 100));
+                
+                // Add some twinkling effect
+                this.scene.tweens.add({
+                    targets: star,
+                    alpha: 0.3,
+                    duration: Phaser.Math.Between(1000, 3000),
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
             }
             console.log(`Created ${GameConfig.starCount} stars`);
         } catch (error) {
@@ -78,4 +103,6 @@ class EffectsManager {
             });
         });
     }
-} 
+}
+
+window.EffectsManager = EffectsManager; 

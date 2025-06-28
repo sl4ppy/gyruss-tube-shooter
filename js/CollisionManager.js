@@ -118,4 +118,6 @@ class CollisionManager {
             return false;
         }
     }
-} 
+}
+
+window.CollisionManager = CollisionManager; 

@@ -81,4 +81,6 @@ class BulletManager {
         this.playerBullets.clear(true, true);
         this.enemyBullets.clear(true, true);
     }
-} 
+}
+
+window.BulletManager = BulletManager; 
