@@ -115,7 +115,7 @@ class GameScene extends Phaser.Scene {
         
         // Add development version indicator if on development branch
         if (window.location.pathname.includes('/development/')) {
-            this.add.text(10, 30, 'DEVELOPMENT VERSION', {
+            this.add.text(10, 30, 'DEVELOPMENT VERSION - ' + new Date().toLocaleTimeString(), {
                 fontSize: '14px',
                 fill: '#ffaa00',
                 fontFamily: 'Courier New'
