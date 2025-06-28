@@ -1,18 +1,17 @@
-name: Deploy Game Versions
+name: Deploy Game
 
 on:
   push:
     branches: [ main, development ]
 
 jobs:
-  deploy-production:
-    if: github.ref == 'refs/heads/main'
+  deploy:
     runs-on: ubuntu-latest
-    name: Deploy Production
+    name: Deploy Game
     steps:
     - uses: actions/checkout@v4
     
-    - name: Deploy to GitHub Pages (Production)
+    - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -21,26 +20,6 @@ jobs:
         force_orphan: true
         user_name: 'github-actions[bot]'
         user_email: 'github-actions[bot]@users.noreply.github.com'
-        commit_message: 'Deploy production version'
-        tag_name: 'v${{ github.run_number }}'
-        tag_message: 'Production deployment ${{ github.run_number }}'
-
-  deploy-development:
-    if: github.ref == 'refs/heads/development'
-    runs-on: ubuntu-latest
-    name: Deploy Development
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Deploy to GitHub Pages (Development)
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: .
-        destination_dir: development
-        force_orphan: false
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
-        commit_message: 'Deploy development version'
-        tag_name: 'dev-v${{ github.run_number }}'
-        tag_message: 'Development deployment ${{ github.run_number }}' 
+        commit_message: 'Deploy game version from ${{ github.ref_name }}'
+        tag_name: '${{ github.ref_name }}-v${{ github.run_number }}'
+        tag_message: 'Deployment from ${{ github.ref_name }} branch' 

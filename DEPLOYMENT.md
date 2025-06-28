@@ -1,6 +1,6 @@
 # 🎮 Game Deployment Guide
 
-This project uses a dual-branch deployment strategy with GitHub Pages and GitHub Actions.
+This project uses a simplified deployment strategy with GitHub Pages and GitHub Actions.
 
 ## 🌿 Branch Strategy
 
@@ -12,7 +12,8 @@ This project uses a dual-branch deployment strategy with GitHub Pages and GitHub
 
 ### **Development Branch (Testing)**
 - **Purpose**: Testing new features and fixes
-- **URL**: `https://sl4ppy.github.io/gyruss-tube-shooter/development/`
+- **URL**: `https://sl4ppy.github.io/gyruss-tube-shooter/` (same as production)
+- **Indicator**: Shows "DEVELOPMENT VERSION" text in the game
 - **Deployment**: Automatic via GitHub Actions
 - **When to use**: Daily development and testing
 
@@ -83,7 +84,7 @@ git push origin main
 ## 📊 Monitoring
 
 - **Production**: Check `https://sl4ppy.github.io/gyruss-tube-shooter/`
-- **Development**: Check `https://sl4ppy.github.io/gyruss-tube-shooter/development/`
+- **Development**: Same URL, but shows "DEVELOPMENT VERSION" indicator
 - **GitHub Actions**: Monitor deployment status in the Actions tab
 
 ## 🚨 Troubleshooting
@@ -96,4 +97,9 @@ git push origin main
 ### **If Production Doesn't Update:**
 1. Check that you're on the `main` branch
 2. Verify the merge was successful
-3. Check GitHub Actions for deployment status 
+3. Check GitHub Actions for deployment status
+
+## 🔍 How to Tell Which Version You're Playing
+
+- **Production Version**: No special indicator
+- **Development Version**: Shows "DEVELOPMENT VERSION" text in the top-left corner 

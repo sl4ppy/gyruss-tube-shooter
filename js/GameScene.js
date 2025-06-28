@@ -114,7 +114,12 @@ class GameScene extends Phaser.Scene {
         });
         
         // Add development version indicator if on development branch
-        if (window.location.pathname.includes('/development/')) {
+        // Check if this is a development deployment by looking at the commit message or URL
+        const isDevelopment = window.location.href.includes('dev') || 
+                             document.title.includes('dev') ||
+                             window.location.search.includes('dev');
+        
+        if (isDevelopment) {
             this.add.text(10, 30, 'DEVELOPMENT VERSION - ' + new Date().toLocaleTimeString(), {
                 fontSize: '14px',
                 fill: '#ffaa00',
