@@ -73,16 +73,32 @@ class GameScene extends Phaser.Scene {
         
         // Add error handling for image loading
         this.load.on('loaderror', (file) => {
-            console.error('Failed to load image:', file.src);
+            console.error('❌ FAILED TO LOAD:', file.src);
+            console.error('File type:', file.type);
+            console.error('File key:', file.key);
         });
         
         this.load.on('complete', () => {
-            console.log('All assets loaded successfully');
+            console.log('✅ All assets loaded successfully');
         });
         
         this.load.on('progress', (value) => {
             console.log('Loading progress:', Math.round(value * 100) + '%');
         });
+        
+        // Add timeout to prevent infinite loading
+        setTimeout(() => {
+            if (!this.load.isLoading()) {
+                console.log('✅ Loader finished normally');
+            } else {
+                console.warn('⚠️ Loader still running after 10 seconds - forcing completion');
+                this.load.off('complete');
+                this.load.off('loaderror');
+                this.load.off('progress');
+                // Force the scene to continue
+                this.scene.start('game');
+            }
+        }, 10000);
         
         console.log('Preload method completed - assets queued for loading');
     }
@@ -102,9 +118,24 @@ class GameScene extends Phaser.Scene {
         const testRect = this.add.rectangle(100, 100, 50, 50, 0xff0000);
         console.log('Test rectangle created:', testRect);
         
-        // Create fallback assets only if needed
-        console.log('Creating fallback assets if needed...');
-        this.createFallbackAssets();
+        // Check if assets loaded successfully, if not create fallbacks
+        console.log('Checking asset loading status...');
+        const assetsToCheck = ['playerShip', 'redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy', 'star'];
+        let missingAssets = [];
+        
+        assetsToCheck.forEach(assetKey => {
+            if (!this.textures.exists(assetKey)) {
+                missingAssets.push(assetKey);
+                console.warn(`⚠️ Asset missing: ${assetKey}`);
+            } else {
+                console.log(`✅ Asset found: ${assetKey}`);
+            }
+        });
+        
+        if (missingAssets.length > 0) {
+            console.log(`Creating fallback assets for: ${missingAssets.join(', ')}`);
+            this.createFallbackAssets();
+        }
         
         // Create fallback enemy textures in case images don't load
         console.log('Creating fallback enemies...');
