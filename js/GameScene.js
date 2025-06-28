@@ -29,77 +29,8 @@ class GameScene extends Phaser.Scene {
     }
     
     preload() {
-        console.log('Preloading assets... - ' + new Date().toLocaleTimeString());
-        
-        // Load ship images with error handling
-        try {
-            this.load.image('playerShip', 'assets/player_ship.png');
-            console.log('Player ship image queued');
-        } catch (error) {
-            console.warn('Could not queue player ship image:', error);
-        }
-        
-        try {
-            this.load.image('redEnemy', 'assets/red_enemy_ship.png');
-            console.log('Red enemy image queued');
-        } catch (error) {
-            console.warn('Could not queue red enemy image:', error);
-        }
-        
-        try {
-            this.load.image('greenEnemy', 'assets/green_enemy_ship.png');
-            console.log('Green enemy image queued');
-        } catch (error) {
-            console.warn('Could not queue green enemy image:', error);
-        }
-        
-        try {
-            this.load.image('yellowEnemy', 'assets/yellow_enemy_ship.png');
-            console.log('Yellow enemy image queued');
-        } catch (error) {
-            console.warn('Could not queue yellow enemy image:', error);
-        }
-        
-        try {
-            this.load.image('purpleEnemy', 'assets/purple_enemy_ship.png');
-            console.log('Purple enemy image queued');
-        } catch (error) {
-            console.warn('Could not queue purple enemy image:', error);
-        }
-        
-        // NO STAR TEXTURE LOADING - will be created procedurally
-        console.log('Star texture will be created procedurally (no loading)');
-        
-        // Add error handling for image loading
-        this.load.on('loaderror', (file) => {
-            console.error('❌ FAILED TO LOAD:', file.src);
-            console.error('File type:', file.type);
-            console.error('File key:', file.key);
-        });
-        
-        this.load.on('complete', () => {
-            console.log('✅ All assets loaded successfully');
-        });
-        
-        this.load.on('progress', (value) => {
-            console.log('Loading progress:', Math.round(value * 100) + '%');
-        });
-        
-        // Add timeout to prevent infinite loading
-        setTimeout(() => {
-            if (!this.load.isLoading()) {
-                console.log('✅ Loader finished normally');
-            } else {
-                console.warn('⚠️ Loader still running after 10 seconds - forcing completion');
-                this.load.off('complete');
-                this.load.off('loaderror');
-                this.load.off('progress');
-                // Don't try to start a scene, just let the create method handle it
-                console.log('Forcing asset loading completion');
-            }
-        }, 10000);
-        
-        console.log('Preload method completed - assets queued for loading');
+        console.log('Preload skipped - creating all assets procedurally - ' + new Date().toLocaleTimeString());
+        // Skip preload entirely to avoid asset loading issues
     }
     
     create() {
@@ -131,28 +62,9 @@ class GameScene extends Phaser.Scene {
         const testRect = this.add.rectangle(100, 100, 50, 50, 0xff0000);
         console.log('Test rectangle created:', testRect);
         
-        // Check if assets loaded successfully, if not create fallbacks
-        console.log('Checking asset loading status...');
-        const assetsToCheck = ['playerShip', 'redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
-        let missingAssets = [];
-        
-        assetsToCheck.forEach(assetKey => {
-            if (!this.textures.exists(assetKey)) {
-                missingAssets.push(assetKey);
-                console.warn(`⚠️ Asset missing: ${assetKey}`);
-            } else {
-                console.log(`✅ Asset found: ${assetKey}`);
-            }
-        });
-        
-        if (missingAssets.length > 0) {
-            console.log(`Creating fallback assets for: ${missingAssets.join(', ')}`);
-            this.createFallbackAssets();
-        }
-        
-        // Create fallback enemy textures in case images don't load
-        console.log('Creating fallback enemies...');
-        this.createFallbackEnemies();
+        // Create ALL assets procedurally since we skipped preload
+        console.log('Creating all assets procedurally...');
+        this.createAllAssets();
         
         // Initialize managers one by one with detailed error checking
         console.log('=== Initializing managers ===');
@@ -220,83 +132,59 @@ class GameScene extends Phaser.Scene {
         console.log('- BulletManager enemy bullets:', this.bulletManager.getEnemyBullets().children.entries.length);
     }
     
-    createFallbackAssets() {
-        console.log('Creating fallback assets only if needed...');
+    createAllAssets() {
+        console.log('Creating all game assets procedurally...');
         
-        // Only create player ship texture if it doesn't exist
-        if (!this.textures.exists('playerShip')) {
-            console.log('Creating fallback player ship texture...');
-            const playerGraphics = this.add.graphics();
-            playerGraphics.fillStyle(0x00ff00);
-            playerGraphics.beginPath();
-            playerGraphics.moveTo(0, -12);
-            playerGraphics.lineTo(-8, 8);
-            playerGraphics.lineTo(8, 8);
-            playerGraphics.closePath();
-            playerGraphics.fillPath();
-            playerGraphics.fillStyle(0x0088ff);
-            playerGraphics.fillRect(-6, 6, 3, 4);
-            playerGraphics.fillRect(3, 6, 3, 4);
-            playerGraphics.generateTexture('playerShip', 32, 32);
-            playerGraphics.destroy();
-            console.log('✓ Fallback player ship texture created');
-        } else {
-            console.log('✓ Player ship texture already exists (loaded from image)');
-        }
+        // Create player ship texture
+        const playerGraphics = this.add.graphics();
+        playerGraphics.fillStyle(0x00ff00);
+        playerGraphics.beginPath();
+        playerGraphics.moveTo(0, -12);
+        playerGraphics.lineTo(-8, 8);
+        playerGraphics.lineTo(8, 8);
+        playerGraphics.closePath();
+        playerGraphics.fillPath();
+        playerGraphics.fillStyle(0x0088ff);
+        playerGraphics.fillRect(-6, 6, 3, 4);
+        playerGraphics.fillRect(3, 6, 3, 4);
+        playerGraphics.generateTexture('playerShip', 32, 32);
+        playerGraphics.destroy();
+        console.log('✓ Player ship texture created');
         
-        // Always create star texture procedurally since data URIs don't work
-        if (!this.textures.exists('star')) {
-            console.log('Creating star texture procedurally...');
-            const starGraphics = this.add.graphics();
-            starGraphics.fillStyle(0xffffff);
-            starGraphics.fillCircle(0, 0, 1);
-            starGraphics.generateTexture('star', 4, 4);
-            starGraphics.destroy();
-            console.log('✓ Star texture created procedurally');
-        } else {
-            console.log('✓ Star texture already exists');
-        }
-        
-        console.log('Fallback asset creation completed');
-    }
-    
-    createFallbackEnemies() {
-        console.log('Creating fallback enemies...');
-        // Create fallback enemy textures in case image loading fails
+        // Create enemy textures
         const colors = [0xff0000, 0x00ff00, 0xffff00, 0xff00ff]; // red, green, yellow, purple
         const enemyTypes = ['redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
         
         for (let i = 0; i < 4; i++) {
-            // Check if the texture already exists (from image loading)
-            if (!this.textures.exists(enemyTypes[i])) {
-                console.log(`Creating fallback texture for ${enemyTypes[i]}`);
-                try {
-                    const graphics = this.add.graphics();
-                    graphics.fillStyle(colors[i]);
-                    
-                    // Create ship shape
-                    graphics.beginPath();
-                    graphics.moveTo(0, -8);
-                    graphics.lineTo(-6, 6);
-                    graphics.lineTo(6, 6);
-                    graphics.closePath();
-                    graphics.fillPath();
-                    
-                    // Add details
-                    graphics.fillStyle(0xffffff);
-                    graphics.fillRect(-2, 2, 4, 2);
-                    
-                    graphics.generateTexture(enemyTypes[i], 16, 16);
-                    graphics.destroy();
-                    console.log(`✓ Fallback texture created for ${enemyTypes[i]}`);
-                } catch (error) {
-                    console.error(`Error creating fallback texture for ${enemyTypes[i]}:`, error);
-                }
-            } else {
-                console.log(`✓ Texture ${enemyTypes[i]} already exists (loaded from image)`);
-            }
+            const graphics = this.add.graphics();
+            graphics.fillStyle(colors[i]);
+            
+            // Create ship shape
+            graphics.beginPath();
+            graphics.moveTo(0, -8);
+            graphics.lineTo(-6, 6);
+            graphics.lineTo(6, 6);
+            graphics.closePath();
+            graphics.fillPath();
+            
+            // Add details
+            graphics.fillStyle(0xffffff);
+            graphics.fillRect(-2, 2, 4, 2);
+            
+            graphics.generateTexture(enemyTypes[i], 16, 16);
+            graphics.destroy();
+            console.log(`✓ ${enemyTypes[i]} texture created`);
         }
-        console.log('Fallback enemy creation completed');
+        
+        // Create star texture
+        const starGraphics = this.add.graphics();
+        starGraphics.fillStyle(0xffffff);
+        starGraphics.fillCircle(0, 0, 1);
+        starGraphics.generateTexture('star', 4, 4);
+        starGraphics.destroy();
+        console.log('✓ Star texture created');
+        
+        console.log('All assets created successfully');
     }
     
     setupUI() {
