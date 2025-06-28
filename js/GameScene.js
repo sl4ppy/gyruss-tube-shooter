@@ -67,9 +67,8 @@ class GameScene extends Phaser.Scene {
             console.warn('Could not queue purple enemy image:', error);
         }
         
-        // Use a simple star texture
-        this.load.image('star', 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
-        console.log('Star texture queued');
+        // Create star texture procedurally instead of using data URI
+        console.log('Star texture will be created procedurally');
         
         // Add error handling for image loading
         this.load.on('loaderror', (file) => {
@@ -95,8 +94,8 @@ class GameScene extends Phaser.Scene {
                 this.load.off('complete');
                 this.load.off('loaderror');
                 this.load.off('progress');
-                // Force the scene to continue
-                this.scene.start('game');
+                // Don't try to start a scene, just let the create method handle it
+                console.log('Forcing asset loading completion');
             }
         }, 10000);
         
@@ -134,7 +133,7 @@ class GameScene extends Phaser.Scene {
         
         // Check if assets loaded successfully, if not create fallbacks
         console.log('Checking asset loading status...');
-        const assetsToCheck = ['playerShip', 'redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy', 'star'];
+        const assetsToCheck = ['playerShip', 'redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
         let missingAssets = [];
         
         assetsToCheck.forEach(assetKey => {
@@ -245,17 +244,17 @@ class GameScene extends Phaser.Scene {
             console.log('✓ Player ship texture already exists (loaded from image)');
         }
         
-        // Only create star texture if it doesn't exist
+        // Always create star texture procedurally since data URIs don't work
         if (!this.textures.exists('star')) {
-            console.log('Creating fallback star texture...');
+            console.log('Creating star texture procedurally...');
             const starGraphics = this.add.graphics();
             starGraphics.fillStyle(0xffffff);
             starGraphics.fillCircle(0, 0, 1);
             starGraphics.generateTexture('star', 4, 4);
             starGraphics.destroy();
-            console.log('✓ Fallback star texture created');
+            console.log('✓ Star texture created procedurally');
         } else {
-            console.log('✓ Star texture already exists (loaded from data URL)');
+            console.log('✓ Star texture already exists');
         }
         
         console.log('Fallback asset creation completed');
