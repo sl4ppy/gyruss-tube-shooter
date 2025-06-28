@@ -97,7 +97,7 @@ class GameScene extends Phaser.Scene {
             console.error('Error stack:', error.stack);
         }
         
-        // Setup UI
+        // Setup UI & log
         console.log('Setting up UI...');
         this.setupUI();
         
