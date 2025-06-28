@@ -1,0 +1,46 @@
+name: Deploy Game Versions
+
+on:
+  push:
+    branches: [ main, development ]
+
+jobs:
+  deploy-production:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    name: Deploy Production
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to GitHub Pages (Production)
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: .
+        destination_dir: .
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Deploy production version'
+        tag_name: 'v${{ github.run_number }}'
+        tag_message: 'Production deployment ${{ github.run_number }}'
+
+  deploy-development:
+    if: github.ref == 'refs/heads/development'
+    runs-on: ubuntu-latest
+    name: Deploy Development
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to GitHub Pages (Development)
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: .
+        destination_dir: development
+        force_orphan: false
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
+        commit_message: 'Deploy development version'
+        tag_name: 'dev-v${{ github.run_number }}'
+        tag_message: 'Development deployment ${{ github.run_number }}' 

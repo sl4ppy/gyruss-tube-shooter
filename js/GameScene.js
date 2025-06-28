@@ -113,6 +113,15 @@ class GameScene extends Phaser.Scene {
             fontFamily: 'Courier New'
         });
         
+        // Add development version indicator if on development branch
+        if (window.location.pathname.includes('/development/')) {
+            this.add.text(10, 30, 'DEVELOPMENT VERSION', {
+                fontSize: '14px',
+                fill: '#ffaa00',
+                fontFamily: 'Courier New'
+            });
+        }
+        
         // Test basic Phaser functionality
         console.log('Testing basic Phaser functionality...');
         const testRect = this.add.rectangle(100, 100, 50, 50, 0xff0000);
