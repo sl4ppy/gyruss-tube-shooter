@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gyruss-Style Tube Shooter</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Gyruss-Style Tube Shooter</h1>
+        <div id="game"></div>
+        <div id="ui">
+            <div id="score">Score: 0</div>
+            <div id="lives">Lives: 3</div>
+            <div id="level">Level: 1</div>
+        </div>
+    </div>
+    
+    <!-- Load modular JavaScript files in order -->
+    <script src="js/config.js"></script>
+    <script src="js/Player.js"></script>
+    <script src="js/BulletManager.js"></script>
+    <script src="js/EffectsManager.js"></script>
+    <script src="js/EnemyManager.js"></script>
+    <script src="js/CollisionManager.js"></script>
+    <script src="js/GameScene.js"></script>
+    <script src="js/MenuScene.js"></script>
+    <script src="game.js"></script>
+</body>
+</html> 
