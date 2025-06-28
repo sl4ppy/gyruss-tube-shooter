@@ -29,7 +29,7 @@ class GameScene extends Phaser.Scene {
     }
     
     preload() {
-        console.log('Preloading assets...');
+        console.log('Preloading assets... - ' + new Date().toLocaleTimeString());
         
         // Load ship images with error handling
         try {
@@ -67,8 +67,8 @@ class GameScene extends Phaser.Scene {
             console.warn('Could not queue purple enemy image:', error);
         }
         
-        // Create star texture procedurally instead of using data URI
-        console.log('Star texture will be created procedurally');
+        // NO STAR TEXTURE LOADING - will be created procedurally
+        console.log('Star texture will be created procedurally (no loading)');
         
         // Add error handling for image loading
         this.load.on('loaderror', (file) => {
