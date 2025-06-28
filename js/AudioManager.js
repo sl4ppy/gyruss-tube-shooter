@@ -94,6 +94,44 @@ class AudioManager {
         this.play('powerup', { volume: 0.7 });
     }
     
+    playBackgroundMusic() {
+        // Create a simple background music loop using procedural generation
+        if (!this.enabled || !this.audioContext) return;
+        
+        try {
+            // Resume audio context if suspended
+            if (this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            
+            // Create a simple ambient background sound
+            this.createBackgroundMusic();
+            console.log('AudioManager: Background music started');
+        } catch (error) {
+            console.warn('AudioManager: Failed to play background music', error);
+        }
+    }
+    
+    createBackgroundMusic() {
+        // Create a simple ambient drone for background music
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        // Use a low frequency for ambient effect
+        oscillator.frequency.setValueAtTime(60, this.audioContext.currentTime);
+        
+        // Very low volume for background
+        gainNode.gain.setValueAtTime(this.musicVolume * 0.1, this.audioContext.currentTime);
+        
+        oscillator.start(this.audioContext.currentTime);
+        
+        // Stop after 30 seconds (background music duration)
+        oscillator.stop(this.audioContext.currentTime + 30);
+    }
+    
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
         console.log(`AudioManager: Volume set to ${this.volume}`);

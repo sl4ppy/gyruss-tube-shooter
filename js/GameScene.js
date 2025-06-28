@@ -11,20 +11,20 @@ class GameScene extends Phaser.Scene {
         this.score = GameConfig.initialScore;
         this.level = GameConfig.initialLevel;
         
-        // Managers (will be initialized in create())
+        // Systems
         this.player = null;
         this.enemyManager = null;
         this.bulletManager = null;
-        this.effectsManager = null;
         this.collisionManager = null;
+        this.effectsManager = null;
         this.audioManager = null;
         this.touchController = null;
+        this.starfieldSystem = null;
         this.waveManager = null;
         
-        // Tunnel Effect Systems
+        // Enhanced systems from guide
         this.tunnelSystem = null;
         this.spiralGenerator = null;
-        this.starfieldSystem = null;
         this.enhancedEnemyMovement = null;
         
         // UI elements
@@ -37,130 +37,130 @@ class GameScene extends Phaser.Scene {
         // Input
         this.restartKey = null;
         this.menuKey = null;
+        
+        console.log('GameScene: Constructor completed');
     }
     
     create() {
-        console.log('=== GameScene create() started ===');
+        console.log('GameScene: Create started');
         
         try {
-            // Initialize tunnel effect systems first
-            console.log('1. Creating TunnelCoordinateSystem...');
-            this.tunnelSystem = new TunnelCoordinateSystem(this.game.config.width, this.game.config.height);
-            console.log('✓ TunnelCoordinateSystem created successfully');
+            // Initialize enhanced systems
+            this.initializeEnhancedSystems();
             
-            console.log('2. Creating SpiralPathGenerator...');
-            this.spiralGenerator = new SpiralPathGenerator(this.tunnelSystem);
-            console.log('✓ SpiralPathGenerator created successfully');
+            // Initialize core systems
+            this.initializeCoreSystems();
             
-            console.log('3. Creating StarfieldSystem...');
-            this.starfieldSystem = new StarfieldSystem(this, this.tunnelSystem);
-            console.log('✓ StarfieldSystem created successfully');
+            // Setup UI
+            this.setupUI();
             
-            console.log('4. Creating EnhancedEnemyMovement...');
-            this.enhancedEnemyMovement = new EnhancedEnemyMovement(this, this.tunnelSystem, this.spiralGenerator);
-            console.log('✓ EnhancedEnemyMovement created successfully');
+            // Setup input
+            this.setupInput();
             
-            // Initialize audio manager
-            console.log('5. Creating AudioManager...');
-            this.audioManager = new AudioManager(this);
-            console.log('✓ AudioManager created successfully');
+            // Start game
+            this.startGame();
             
-            // Initialize managers one by one with detailed error checking
-            console.log('=== Initializing managers ===');
-            
-            console.log('6. Creating BulletManager...');
-            this.bulletManager = new BulletManager(this);
-            console.log('✓ BulletManager created successfully');
-            
-            console.log('7. Creating EffectsManager...');
-            this.effectsManager = new EffectsManager(this);
-            console.log('✓ EffectsManager created successfully');
-            
-            console.log('8. Creating Player...');
-            this.player = new Player(this);
-            console.log('✓ Player created successfully');
-            
-            console.log('9. Creating EnemyManager...');
-            this.enemyManager = new EnemyManager(this);
-            console.log('✓ EnemyManager created successfully');
-            
-            console.log('10. Creating CollisionManager...');
-            this.collisionManager = new CollisionManager(this, this.player, this.bulletManager);
-            console.log('✓ CollisionManager created successfully');
-            
-            console.log('11. Creating TouchController...');
-            this.touchController = new TouchController(this);
-            console.log('✓ TouchController created successfully');
-            
-            console.log('12. Creating WaveManager...');
-            this.waveManager = new WaveManager(this);
-            console.log('✓ WaveManager created successfully');
-            
-            // Connect tunnel systems to managers that need them
-            console.log('13. Connecting tunnel systems...');
-            if (this.enemyManager && this.enhancedEnemyMovement && this.tunnelSystem && this.spiralGenerator) {
-                this.enemyManager.setTunnelSystems(this.enhancedEnemyMovement, this.tunnelSystem, this.spiralGenerator);
-                console.log('✓ Tunnel systems connected to EnemyManager');
-            }
+            console.log('GameScene: Create completed successfully');
             
         } catch (error) {
-            console.error('❌ Error initializing managers:', error);
-            window.gameErrorHandler.handleSystemError('GameScene', error, { phase: 'manager_initialization' });
+            console.error('GameScene: Error in create:', error);
+            window.gameErrorHandler.handleSystemError('GameScene', error, { phase: 'create' });
         }
+    }
+    
+    /**
+     * Initialize enhanced systems from the guide
+     */
+    initializeEnhancedSystems() {
+        console.log('GameScene: Initializing enhanced systems...');
         
-        // Setup UI
-        console.log('Setting up UI...');
-        this.setupUI();
+        // Initialize tunnel coordinate system
+        this.tunnelSystem = new TunnelCoordinateSystem();
         
-        // Setup input
-        console.log('Setting up input...');
-        this.setupInput();
+        // Initialize spiral path generator
+        this.spiralGenerator = new SpiralPathGenerator();
         
-        // Start game
-        console.log('=== Starting game ===');
-        try {
-            console.log('Starting wave-based game loop...');
-            this.waveManager.startGame();
-            console.log('✓ Wave-based game loop started');
-            
-            // Play level start sound
-            this.audioManager.playLevelUp();
-            
-        } catch (error) {
-            console.error('❌ Error starting game:', error);
-            window.gameErrorHandler.handleSystemError('GameScene', error, { phase: 'game_start' });
-        }
+        // Initialize enhanced enemy movement
+        this.enhancedEnemyMovement = new EnhancedEnemyMovement(this);
         
-        console.log('=== GameScene create() completed ===');
+        // Initialize starfield system with linear warp effect
+        this.starfieldSystem = new StarfieldSystem(this, this.tunnelSystem);
+        
+        console.log('GameScene: Enhanced systems initialized');
+    }
+    
+    /**
+     * Initialize core game systems
+     */
+    initializeCoreSystems() {
+        console.log('GameScene: Initializing core systems...');
+        
+        // Initialize player
+        this.player = new Player(this);
+        
+        // Initialize managers
+        this.bulletManager = new BulletManager(this);
+        this.effectsManager = new EffectsManager(this);
+        this.audioManager = new AudioManager(this);
+        this.touchController = new TouchController(this);
+        
+        // Initialize enemy manager with enhanced movement
+        this.enemyManager = new EnemyManager(this);
+        this.enemyManager.setTunnelSystems(
+            this.enhancedEnemyMovement,
+            this.tunnelSystem,
+            this.spiralGenerator
+        );
+        
+        // Initialize collision manager
+        this.collisionManager = new CollisionManager(this, this.player, this.bulletManager);
+        this.collisionManager.setupCollisions();
+        
+        // Initialize wave manager
+        this.waveManager = new WaveManager(this);
+        
+        console.log('GameScene: Core systems initialized');
     }
     
     setupUI() {
-        this.scoreText = this.add.text(16, 16, 'Score: ' + this.score, {
-            fontSize: '24px',
-            fill: '#fff'
+        // Score display
+        this.scoreText = this.add.text(10, 10, 'Score: ' + this.score, {
+            fontSize: '18px',
+            fill: '#ffffff',
+            fontFamily: 'Courier New',
+            fontWeight: 'bold'
         });
         
-        this.livesText = this.add.text(16, 50, 'Lives: ' + this.player.getLives(), {
-            fontSize: '24px',
-            fill: '#fff'
+        // Lives display
+        this.livesText = this.add.text(10, 35, 'Lives: ' + this.player.getLives(), {
+            fontSize: '18px',
+            fill: '#ffffff',
+            fontFamily: 'Courier New',
+            fontWeight: 'bold'
         });
         
-        this.levelText = this.add.text(16, 84, 'Level: ' + this.level, {
-            fontSize: '24px',
-            fill: '#fff'
+        // Level display
+        this.levelText = this.add.text(10, 60, 'Level: ' + this.level, {
+            fontSize: '18px',
+            fill: '#ffffff',
+            fontFamily: 'Courier New',
+            fontWeight: 'bold'
         });
         
-        this.phaseText = this.add.text(16, 118, 'Phase: 1', {
-            fontSize: '20px',
-            fill: '#00ff00'
+        // Phase and wave display
+        this.phaseText = this.add.text(10, 85, 'Phase: 1', {
+            fontSize: '16px',
+            fill: '#ffff00',
+            fontFamily: 'Courier New'
         });
         
-        this.waveText = this.add.text(16, 142, 'Wave: 1', {
-            fontSize: '20px',
-            fill: '#ffff00'
+        this.waveText = this.add.text(10, 105, 'Wave: 1', {
+            fontSize: '16px',
+            fill: '#ffff00',
+            fontFamily: 'Courier New'
         });
         
-        // Add audio controls
+        // Audio controls
         this.addAudioControls();
     }
     
@@ -201,9 +201,23 @@ class GameScene extends Phaser.Scene {
         });
     }
     
+    startGame() {
+        console.log('GameScene: Starting game...');
+        
+        // Start wave system
+        this.waveManager.startGame();
+        
+        // Play background music
+        if (this.audioManager) {
+            this.audioManager.playBackgroundMusic();
+        }
+        
+        console.log('GameScene: Game started successfully');
+    }
+    
     update() {
         try {
-            // Update starfield system
+            // Update starfield system with linear warp effect
             if (this.starfieldSystem && this.player) {
                 const playerAngle = this.player.getAngle();
                 this.starfieldSystem.updateStarfield(playerAngle, this.game.loop.delta);
@@ -219,17 +233,18 @@ class GameScene extends Phaser.Scene {
                 this.touchController.update();
             }
             
-            // Update enemy movement using new tunnel system
-            if (this.enemyManager && this.enhancedEnemyMovement) {
-                // Update existing enemies with new movement system
-                this.enemyManager.getEnemies().children.entries.forEach(enemy => {
-                    if (enemy.active && enemy.enemyState) {
-                        this.enhancedEnemyMovement.updateEnemyMovement(enemy.enemyState, this.game.loop.delta / 1000);
-                    }
-                });
-                
-                // Also update the old system for compatibility
+            // Update enemy movement using enhanced system
+            if (this.enemyManager) {
                 this.enemyManager.updateEnemyMovement();
+            }
+            
+            // Update wave manager and check for wave completion
+            if (this.waveManager) {
+                this.waveManager.update(this.game.loop.delta);
+                this.waveManager.checkWaveComplete();
+                
+                // Update phase display
+                this.updatePhaseDisplay();
             }
             
             // Update bullet cleanup
@@ -293,7 +308,9 @@ class GameScene extends Phaser.Scene {
         this.levelText.setText('Level: ' + this.level);
         
         // Play level up sound
-        this.audioManager.playLevelUp();
+        if (this.audioManager) {
+            this.audioManager.playLevelUp();
+        }
         
         // Increase enemy speed
         this.enemyManager.increaseSpeed();
@@ -307,7 +324,9 @@ class GameScene extends Phaser.Scene {
         console.log('Game Over!');
         
         // Play game over sound
-        this.audioManager.playPlayerHit();
+        if (this.audioManager) {
+            this.audioManager.playPlayerHit();
+        }
         
         // Show game over text
         const gameOverText = this.add.text(GameConfig.centerX, GameConfig.centerY - 50, 'GAME OVER', {
@@ -355,7 +374,7 @@ class GameScene extends Phaser.Scene {
     }
     
     updatePhaseDisplay() {
-        if (this.phaseText && this.waveText) {
+        if (this.phaseText && this.waveText && this.waveManager) {
             this.phaseText.setText('Phase: ' + this.waveManager.getCurrentPhase());
             this.waveText.setText('Wave: ' + this.waveManager.getCurrentWave());
         }

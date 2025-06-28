@@ -1,213 +1,245 @@
 /**
  * Spiral Path Generator
- * Generates and manages spiral entry paths for Gyruss-style tunnel effect
+ * Generates spiral entry paths for Gyruss-style tube effect
  */
 
 class SpiralPathGenerator {
-    constructor(tunnelSystem) {
-        this.tunnelSystem = tunnelSystem;
-        this.pathCache = new Map(); // Cache for precomputed paths
-        
-        // Spiral configuration
+    constructor() {
         this.spiralConfig = {
-            types: {
-                archimedean: {
-                    name: 'Archimedean',
-                    radiusFunction: (t) => t * 2, // Linear radius increase
-                    angleFunction: (t) => t * 3   // Constant angular velocity
-                },
-                logarithmic: {
-                    name: 'Logarithmic',
-                    radiusFunction: (t) => Math.exp(t * 0.5) * 10,
-                    angleFunction: (t) => t * 2
-                },
-                hyperbolic: {
-                    name: 'Hyperbolic',
-                    radiusFunction: (t) => 100 / (1 - t * 0.8),
-                    angleFunction: (t) => t * 4
-                },
-                gyruss: {
-                    name: 'Gyruss Classic',
-                    radiusFunction: (t) => t * t * 300, // Quadratic radius increase
-                    angleFunction: (t) => t * 2.5       // Moderate angular velocity
-                }
-            }
+            startRadius: 0,
+            endRadius: 200,
+            startAngle: 0,
+            rotations: 2, // Number of full rotations
+            duration: 180 // Frames to complete spiral
         };
         
         console.log('SpiralPathGenerator: Initialized for Gyruss-style spiral paths');
     }
     
     /**
-     * Generate a spiral path from center to target radius
-     * @param {string} spiralType - Type of spiral ('archimedean', 'logarithmic', 'hyperbolic', 'gyruss')
-     * @param {number} startRadius - Starting radius (usually 0 for center)
-     * @param {number} targetRadius - Target radius for formation
+     * Generate a single spiral path
      * @param {number} startAngle - Starting angle in radians
-     * @param {number} duration - Duration in frames
      * @returns {Array} Array of path points
      */
-    generateSpiralPath(spiralType, startRadius, targetRadius, startAngle, duration) {
-        const cacheKey = `${spiralType}_${startRadius}_${targetRadius}_${startAngle}_${duration}`;
-        
-        // Check cache first
-        if (this.pathCache.has(cacheKey)) {
-            return this.pathCache.get(cacheKey);
-        }
-        
-        const spiralTypeConfig = this.spiralConfig.types[spiralType] || this.spiralConfig.types.gyruss;
+    generateSpiralPath(startAngle = 0) {
         const path = [];
+        const angleStep = (this.spiralConfig.rotations * Math.PI * 2) / this.spiralConfig.duration;
+        const radiusStep = (this.spiralConfig.endRadius - this.spiralConfig.startRadius) / this.spiralConfig.duration;
         
-        for (let frame = 0; frame <= duration; frame++) {
-            const t = frame / duration; // Normalized time (0 to 1)
-            
-            // Calculate radius and angle using spiral functions
-            const radius = startRadius + (targetRadius - startRadius) * spiralTypeConfig.radiusFunction(t);
-            const angle = startAngle + spiralTypeConfig.angleFunction(t) * Math.PI * 2;
-            
-            // Convert to screen coordinates
-            const screenPos = this.tunnelSystem.polarToScreen(radius, angle);
-            
-            // Calculate depth and scale
-            const depthFactor = this.tunnelSystem.calculateDepthFactor(radius);
-            const scale = this.tunnelSystem.calculateSpriteScale(radius);
+        for (let frame = 0; frame < this.spiralConfig.duration; frame++) {
+            const angle = startAngle + frame * angleStep;
+            const radius = this.spiralConfig.startRadius + frame * radiusStep;
             
             path.push({
                 frame: frame,
                 radius: radius,
                 angle: angle,
-                x: screenPos.x,
-                y: screenPos.y,
-                depthFactor: depthFactor,
-                scale: scale,
-                t: t
+                phase: 'SPIRAL'
             });
         }
         
-        // Cache the path
-        this.pathCache.set(cacheKey, path);
         return path;
     }
     
     /**
-     * Generate multiple spiral paths for formation entry
-     * @param {string} formationType - Type of formation ('v', 'line', 'circle', 'diamond')
+     * Generate formation paths for multiple enemies
+     * @param {string} formationType - Type of formation ('circle', 'line', 'v')
      * @param {number} enemyCount - Number of enemies in formation
-     * @param {number} targetRadius - Formation radius
-     * @param {number} duration - Entry duration in frames
-     * @returns {Array} Array of spiral paths for each enemy
+     * @param {number} targetRadius - Target radius for formation
+     * @param {number} duration - Duration in frames
+     * @returns {Array} Array of path arrays for each enemy
      */
     generateFormationPaths(formationType, enemyCount, targetRadius, duration) {
         const paths = [];
         
-        for (let i = 0; i < enemyCount; i++) {
-            let startAngle;
-            
-            switch (formationType) {
-                case 'v':
-                    // V-formation: spread in a V shape
-                    startAngle = (i / (enemyCount - 1)) * Math.PI * 0.6 - Math.PI * 0.3;
-                    break;
-                    
-                case 'line':
-                    // Line formation: spread in a line
-                    startAngle = (i / (enemyCount - 1)) * Math.PI * 0.8 - Math.PI * 0.4;
-                    break;
-                    
-                case 'circle':
-                    // Circle formation: evenly spaced around circle
-                    startAngle = (i / enemyCount) * Math.PI * 2;
-                    break;
-                    
-                case 'diamond':
-                    // Diamond formation: diamond pattern
-                    if (i === 0) startAngle = 0;                    // Top
-                    else if (i === 1) startAngle = Math.PI / 2;     // Right
-                    else if (i === 2) startAngle = Math.PI;         // Bottom
-                    else if (i === 3) startAngle = Math.PI * 1.5;   // Left
-                    else startAngle = (i / enemyCount) * Math.PI * 2; // Fallback
-                    break;
-                    
-                default:
-                    startAngle = (i / enemyCount) * Math.PI * 2;
-            }
-            
-            // Add slight randomization to make paths more natural
-            const randomOffset = (Math.random() - 0.5) * 0.2;
-            startAngle += randomOffset;
-            
-            const path = this.generateSpiralPath('gyruss', 0, targetRadius, startAngle, duration);
-            paths.push({
-                enemyIndex: i,
-                formationType: formationType,
-                startAngle: startAngle,
-                path: path
-            });
+        // Update config for this formation
+        this.spiralConfig.endRadius = targetRadius;
+        this.spiralConfig.duration = duration;
+        
+        switch (formationType) {
+            case 'circle':
+                // Enemies start at different angles around a circle
+                for (let i = 0; i < enemyCount; i++) {
+                    const startAngle = (i / enemyCount) * Math.PI * 2;
+                    paths.push(this.generateSpiralPath(startAngle));
+                }
+                break;
+                
+            case 'line':
+                // Enemies start in a line formation
+                const angleSpread = Math.PI / 4; // 45 degrees
+                const angleStep = angleSpread / (enemyCount - 1);
+                
+                for (let i = 0; i < enemyCount; i++) {
+                    const startAngle = -angleSpread / 2 + i * angleStep;
+                    paths.push(this.generateSpiralPath(startAngle));
+                }
+                break;
+                
+            case 'v':
+                // V formation
+                for (let i = 0; i < enemyCount; i++) {
+                    const startAngle = (i % 2 === 0 ? 1 : -1) * (Math.PI / 6) * Math.floor(i / 2);
+                    paths.push(this.generateSpiralPath(startAngle));
+                }
+                break;
+                
+            case 'diamond':
+                // Diamond formation
+                const positions = [
+                    { angle: 0, radius: 0 },           // Top
+                    { angle: Math.PI / 2, radius: 0 }, // Right
+                    { angle: Math.PI, radius: 0 },     // Bottom
+                    { angle: -Math.PI / 2, radius: 0 } // Left
+                ];
+                
+                for (let i = 0; i < enemyCount; i++) {
+                    const pos = positions[i % positions.length];
+                    paths.push(this.generateSpiralPath(pos.angle));
+                }
+                break;
+                
+            case 'cross':
+                // Cross formation
+                const crossAngles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+                
+                for (let i = 0; i < enemyCount; i++) {
+                    const startAngle = crossAngles[i % crossAngles.length];
+                    paths.push(this.generateSpiralPath(startAngle));
+                }
+                break;
+                
+            default:
+                // Default to circle formation
+                for (let i = 0; i < enemyCount; i++) {
+                    const startAngle = (i / enemyCount) * Math.PI * 2;
+                    paths.push(this.generateSpiralPath(startAngle));
+                }
+                break;
         }
         
         return paths;
     }
     
     /**
+     * Generate a custom spiral path with specific parameters
+     * @param {Object} config - Spiral configuration
+     * @returns {Array} Array of path points
+     */
+    generateCustomSpiral(config) {
+        const {
+            startRadius = 0,
+            endRadius = 200,
+            startAngle = 0,
+            rotations = 2,
+            duration = 180,
+            easing = 'linear'
+        } = config;
+        
+        const path = [];
+        const angleStep = (rotations * Math.PI * 2) / duration;
+        const radiusStep = (endRadius - startRadius) / duration;
+        
+        for (let frame = 0; frame < duration; frame++) {
+            let progress = frame / duration;
+            
+            // Apply easing if specified
+            if (easing === 'easeIn') {
+                progress = progress * progress;
+            } else if (easing === 'easeOut') {
+                progress = 1 - (1 - progress) * (1 - progress);
+            } else if (easing === 'easeInOut') {
+                progress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            }
+            
+            const angle = startAngle + frame * angleStep;
+            const radius = startRadius + progress * (endRadius - startRadius);
+            
+            path.push({
+                frame: frame,
+                radius: radius,
+                angle: angle,
+                phase: 'SPIRAL',
+                progress: progress
+            });
+        }
+        
+        return path;
+    }
+    
+    /**
+     * Generate a wave pattern spiral
+     * @param {number} startAngle - Starting angle
+     * @param {number} amplitude - Wave amplitude
+     * @param {number} frequency - Wave frequency
+     * @returns {Array} Array of path points
+     */
+    generateWaveSpiral(startAngle, amplitude = 20, frequency = 3) {
+        const path = [];
+        const angleStep = (this.spiralConfig.rotations * Math.PI * 2) / this.spiralConfig.duration;
+        const radiusStep = (this.spiralConfig.endRadius - this.spiralConfig.startRadius) / this.spiralConfig.duration;
+        
+        for (let frame = 0; frame < this.spiralConfig.duration; frame++) {
+            const baseAngle = startAngle + frame * angleStep;
+            const waveOffset = Math.sin(frame * frequency * 0.1) * amplitude;
+            const angle = baseAngle + waveOffset * 0.01; // Small angle offset
+            
+            const radius = this.spiralConfig.startRadius + frame * radiusStep;
+            
+            path.push({
+                frame: frame,
+                radius: radius,
+                angle: angle,
+                phase: 'SPIRAL',
+                waveOffset: waveOffset
+            });
+        }
+        
+        return path;
+    }
+    
+    /**
      * Get path point at specific frame
-     * @param {Array} path - Precomputed path
-     * @param {number} frame - Current frame
-     * @returns {Object} Path point data
+     * @param {Array} path - Path array
+     * @param {number} frame - Frame number
+     * @returns {Object} Path point or null if out of bounds
      */
     getPathPoint(path, frame) {
-        const frameIndex = Math.min(frame, path.length - 1);
-        return path[frameIndex];
+        if (frame < 0 || frame >= path.length) {
+            return null;
+        }
+        return path[frame];
     }
     
     /**
      * Interpolate between path points for smooth movement
-     * @param {Array} path - Precomputed path
-     * @param {number} frame - Current frame (can be fractional)
+     * @param {Array} path - Path array
+     * @param {number} frame - Frame number (can be fractional)
      * @returns {Object} Interpolated path point
      */
     interpolatePathPoint(path, frame) {
-        const frameIndex = Math.floor(frame);
-        const nextFrameIndex = Math.min(frameIndex + 1, path.length - 1);
-        const fraction = frame - frameIndex;
+        const frame1 = Math.floor(frame);
+        const frame2 = Math.min(frame1 + 1, path.length - 1);
+        const fraction = frame - frame1;
         
-        if (frameIndex >= path.length - 1) {
+        if (frame1 >= path.length) {
             return path[path.length - 1];
         }
         
-        const current = path[frameIndex];
-        const next = path[nextFrameIndex];
+        const point1 = path[frame1];
+        const point2 = path[frame2];
         
         // Linear interpolation
+        const radius = point1.radius + (point2.radius - point1.radius) * fraction;
+        const angle = point1.angle + (point2.angle - point1.angle) * fraction;
+        
         return {
             frame: frame,
-            radius: current.radius + (next.radius - current.radius) * fraction,
-            angle: current.angle + (next.angle - current.angle) * fraction,
-            x: current.x + (next.x - current.x) * fraction,
-            y: current.y + (next.y - current.y) * fraction,
-            depthFactor: current.depthFactor + (next.depthFactor - current.depthFactor) * fraction,
-            scale: current.scale + (next.scale - current.scale) * fraction,
-            t: current.t + (next.t - current.t) * fraction
-        };
-    }
-    
-    /**
-     * Clear path cache to free memory
-     */
-    clearCache() {
-        this.pathCache.clear();
-        console.log('SpiralPathGenerator: Cache cleared');
-    }
-    
-    /**
-     * Get cache statistics
-     * @returns {Object} Cache statistics
-     */
-    getCacheStats() {
-        return {
-            cachedPaths: this.pathCache.size,
-            memoryUsage: this.pathCache.size * 1000 // Rough estimate in bytes
+            radius: radius,
+            angle: angle,
+            phase: 'SPIRAL'
         };
     }
 }
 
-// Export for use in other modules
 window.SpiralPathGenerator = SpiralPathGenerator; 

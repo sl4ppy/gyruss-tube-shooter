@@ -1,127 +1,161 @@
 /**
  * Tunnel Coordinate System
- * Handles Gyruss-style 3D tunnel effect using polar coordinates
+ * Core coordinate transformations for Gyruss-style tube effect
  */
 
 class TunnelCoordinateSystem {
-    constructor(screenWidth, screenHeight) {
-        this.centerX = screenWidth / 2;
-        this.centerY = screenHeight / 2;
-        this.maxRadius = Math.sqrt(this.centerX * this.centerX + this.centerY * this.centerY);
+    constructor() {
+        // Screen center coordinates
+        this.centerX = GameConfig.centerX;
+        this.centerY = GameConfig.centerY;
+        this.maxRadius = 400; // Maximum radius for depth calculations
         
-        // Depth parameters for 3D effect
+        // Depth effect configuration
         this.depthConfig = {
-            minDepth: 0.1,      // Closest to player (edge of screen)
-            maxDepth: 1.0,      // Furthest from player (center)
-            depthFalloff: 0.8,  // How quickly depth changes with radius
-            scaleRange: {
-                min: 0.2,       // Smallest sprite scale
-                max: 1.5        // Largest sprite scale
-            }
+            minScale: 0.2,
+            maxScale: 2.5,
+            minAlpha: 0.3,
+            maxAlpha: 1.0,
+            minBlur: 0,
+            maxBlur: 3
         };
         
-        console.log('TunnelCoordinateSystem: Initialized for Gyruss-style tunnel effect');
+        console.log('TunnelCoordinateSystem: Initialized with center at', this.centerX, this.centerY);
     }
     
     /**
-     * Convert polar coordinates (radius, angle) to screen coordinates (x, y)
-     * @param {number} radius - Distance from center (0 to maxRadius)
-     * @param {number} angle - Angle in radians (0 to 2π)
-     * @returns {Object} {x, y} screen coordinates
+     * Convert polar coordinates to screen coordinates
+     * @param {number} radius - Distance from center
+     * @param {number} angle - Angle in radians
+     * @returns {Object} Screen coordinates {x, y}
      */
     polarToScreen(radius, angle) {
-        const x = this.centerX + Math.cos(angle) * radius;
-        const y = this.centerY + Math.sin(angle) * radius;
-        return { x, y };
+        return {
+            x: this.centerX + radius * Math.cos(angle),
+            y: this.centerY + radius * Math.sin(angle)
+        };
     }
     
     /**
-     * Convert screen coordinates (x, y) to polar coordinates (radius, angle)
+     * Convert screen coordinates to polar coordinates
      * @param {number} x - Screen X coordinate
      * @param {number} y - Screen Y coordinate
-     * @returns {Object} {radius, angle} polar coordinates
+     * @returns {Object} Polar coordinates {radius, angle}
      */
     screenToPolar(x, y) {
         const dx = x - this.centerX;
         const dy = y - this.centerY;
-        const radius = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        return { radius, angle };
-    }
-    
-    /**
-     * Calculate depth factor based on radius (0 = center, 1 = edge)
-     * @param {number} radius - Distance from center
-     * @returns {number} Depth factor (0 to 1)
-     */
-    calculateDepthFactor(radius) {
-        const normalizedRadius = Math.min(radius / this.maxRadius, 1);
-        return Math.pow(normalizedRadius, this.depthConfig.depthFalloff);
-    }
-    
-    /**
-     * Calculate sprite scale based on depth for 3D effect
-     * @param {number} radius - Distance from center
-     * @returns {number} Scale factor for sprite
-     */
-    calculateSpriteScale(radius) {
-        const depthFactor = this.calculateDepthFactor(radius);
-        const scale = this.depthConfig.scaleRange.min + 
-                     (this.depthConfig.scaleRange.max - this.depthConfig.scaleRange.min) * depthFactor;
-        return Math.max(this.depthConfig.scaleRange.min, 
-                       Math.min(this.depthConfig.scaleRange.max, scale));
-    }
-    
-    /**
-     * Calculate velocity components for smooth movement
-     * @param {number} radius - Current radius
-     * @param {number} angle - Current angle
-     * @param {number} radiusSpeed - Speed of radius change
-     * @param {number} angleSpeed - Speed of angle change
-     * @returns {Object} {velocityX, velocityY} velocity components
-     */
-    calculateVelocity(radius, angle, radiusSpeed, angleSpeed) {
-        // Calculate next position
-        const nextRadius = radius + radiusSpeed;
-        const nextAngle = angle + angleSpeed;
-        
-        const currentPos = this.polarToScreen(radius, angle);
-        const nextPos = this.polarToScreen(nextRadius, nextAngle);
-        
         return {
-            velocityX: nextPos.x - currentPos.x,
-            velocityY: nextPos.y - currentPos.y
+            radius: Math.sqrt(dx * dx + dy * dy),
+            angle: Math.atan2(dy, dx)
         };
     }
     
     /**
-     * Check if a position is within the playable area
-     * @param {number} x - Screen X coordinate
-     * @param {number} y - Screen Y coordinate
-     * @returns {boolean} True if within bounds
+     * Calculate depth factor for 3D illusion
+     * @param {number} radius - Distance from center
+     * @returns {number} Depth factor (0 = far, 1 = close)
      */
-    isWithinBounds(x, y) {
-        const { radius } = this.screenToPolar(x, y);
-        return radius <= this.maxRadius;
+    calculateDepthFactor(radius) {
+        // Normalize radius to 0-1 range (0 = center, 1 = edge)
+        const normalizedRadius = Math.min(radius / this.maxRadius, 1);
+        
+        // Invert so that center = 1 (close), edge = 0 (far)
+        return 1 - normalizedRadius;
     }
     
     /**
-     * Get spawn position at edge of screen
-     * @param {number} angle - Spawn angle
-     * @returns {Object} {x, y} spawn coordinates
+     * Calculate sprite scale based on depth
+     * @param {number} radius - Distance from center
+     * @returns {number} Scale factor
      */
-    getSpawnPosition(angle) {
-        return this.polarToScreen(this.maxRadius, angle);
+    calculateSpriteScale(radius) {
+        const depthFactor = this.calculateDepthFactor(radius);
+        return this.depthConfig.minScale + 
+               (this.depthConfig.maxScale - this.depthConfig.minScale) * depthFactor;
     }
     
     /**
-     * Get center position
-     * @returns {Object} {x, y} center coordinates
+     * Calculate alpha based on depth
+     * @param {number} radius - Distance from center
+     * @returns {number} Alpha value
      */
-    getCenterPosition() {
-        return { x: this.centerX, y: this.centerY };
+    calculateAlpha(radius) {
+        const depthFactor = this.calculateDepthFactor(radius);
+        return this.depthConfig.minAlpha + 
+               (this.depthConfig.maxAlpha - this.depthConfig.minAlpha) * depthFactor;
+    }
+    
+    /**
+     * Calculate blur based on depth
+     * @param {number} radius - Distance from center
+     * @returns {number} Blur value
+     */
+    calculateBlur(radius) {
+        const depthFactor = this.calculateDepthFactor(radius);
+        return this.depthConfig.minBlur + 
+               (this.depthConfig.maxBlur - this.depthConfig.minBlur) * (1 - depthFactor);
+    }
+    
+    /**
+     * Update sprite visual properties based on depth
+     * @param {Phaser.GameObjects.GameObject} sprite - Sprite to update
+     * @param {number} radius - Distance from center
+     */
+    updateSpriteVisuals(sprite, radius) {
+        const depthFactor = this.calculateDepthFactor(radius);
+        
+        // Scale sprite
+        const scale = this.calculateSpriteScale(radius);
+        sprite.setScale(scale);
+        
+        // Adjust alpha
+        const alpha = this.calculateAlpha(radius);
+        sprite.setAlpha(alpha);
+        
+        // Optional: Add blur effect for distant objects
+        if (sprite.setBlur) {
+            const blur = this.calculateBlur(radius);
+            sprite.setBlur(blur);
+        }
+    }
+    
+    /**
+     * Get distance between two points
+     * @param {number} x1 - First point X
+     * @param {number} y1 - First point Y
+     * @param {number} x2 - Second point X
+     * @param {number} y2 - Second point Y
+     * @returns {number} Distance
+     */
+    getDistance(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    /**
+     * Get angle between two points
+     * @param {number} x1 - First point X
+     * @param {number} y1 - First point Y
+     * @param {number} x2 - Second point X
+     * @param {number} y2 - Second point Y
+     * @returns {number} Angle in radians
+     */
+    getAngle(x1, y1, x2, y2) {
+        return Math.atan2(y2 - y1, x2 - x1);
+    }
+    
+    /**
+     * Normalize angle to 0-2π range
+     * @param {number} angle - Angle in radians
+     * @returns {number} Normalized angle
+     */
+    normalizeAngle(angle) {
+        angle = angle % (Math.PI * 2);
+        if (angle < 0) angle += Math.PI * 2;
+        return angle;
     }
 }
 
-// Export for use in other modules
 window.TunnelCoordinateSystem = TunnelCoordinateSystem; 

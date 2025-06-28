@@ -78,13 +78,17 @@ class Player {
     setupControls() {
         this.cursors = this.scene.input.keyboard.createCursorKeys();
         this.fireKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        
+        // Add A and D keys as alternative controls
+        this.leftKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        this.rightKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     }
     
     update() {
         // Handle rotation around the circle
-        if (this.cursors.left.isDown) {
+        if (this.cursors.left.isDown || this.leftKey.isDown) {
             this.angle -= this.speed;
-        } else if (this.cursors.right.isDown) {
+        } else if (this.cursors.right.isDown || this.rightKey.isDown) {
             this.angle += this.speed;
         }
         
@@ -186,6 +190,10 @@ class Player {
     
     isDead() {
         return this.lives <= 0;
+    }
+    
+    getAngle() {
+        return this.angle;
     }
 }
 

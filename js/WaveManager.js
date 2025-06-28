@@ -1,306 +1,416 @@
 /**
- * Wave Manager Class
- * Handles wave-based game progression with phases and difficulty scaling
+ * Wave Manager with Scripting System
+ * Manages enemy waves and formations for Gyruss-style tube effect
  */
+
+class WaveScriptingSystem {
+    constructor() {
+        this.waveScripts = {
+            wave1: {
+                formation: 'circle',
+                enemyCount: 6,
+                spawnDelay: 500,
+                orbitDuration: 3000,
+                attackChance: 0.3
+            },
+            wave2: {
+                formation: 'v',
+                enemyCount: 5,
+                spawnDelay: 400,
+                orbitDuration: 2500,
+                attackChance: 0.5
+            },
+            wave3: {
+                formation: 'line',
+                enemyCount: 8,
+                spawnDelay: 300,
+                orbitDuration: 2000,
+                attackChance: 0.7
+            },
+            wave4: {
+                formation: 'diamond',
+                enemyCount: 4,
+                spawnDelay: 600,
+                orbitDuration: 3500,
+                attackChance: 0.4
+            },
+            wave5: {
+                formation: 'cross',
+                enemyCount: 4,
+                spawnDelay: 450,
+                orbitDuration: 2800,
+                attackChance: 0.6
+            }
+        };
+        
+        this.currentWave = 1;
+        this.waveTimer = 0;
+        this.spawnTimer = 0;
+        this.enemiesSpawned = 0;
+        this.currentScript = null;
+        
+        console.log('WaveScriptingSystem: Initialized with wave scripts');
+    }
+    
+    /**
+     * Execute a specific wave
+     * @param {string} waveName - Name of wave to execute
+     * @param {Object} enemyManager - Enemy manager reference
+     */
+    executeWave(waveName, enemyManager) {
+        const script = this.waveScripts[waveName];
+        if (!script) {
+            console.warn(`Wave script '${waveName}' not found`);
+            return;
+        }
+        
+        this.currentScript = script;
+        this.enemiesSpawned = 0;
+        this.spawnTimer = 0;
+        
+        console.log(`Executing wave: ${waveName} with ${script.enemyCount} enemies`);
+        
+        // Spawn first enemy immediately
+        this.spawnEnemy(enemyManager);
+    }
+    
+    /**
+     * Update wave spawning
+     * @param {number} deltaTime - Time since last frame
+     * @param {Object} enemyManager - Enemy manager reference
+     */
+    update(deltaTime, enemyManager) {
+        if (!this.currentScript) return;
+        
+        this.spawnTimer += deltaTime;
+        
+        // Spawn enemies with delay
+        if (this.enemiesSpawned < this.currentScript.enemyCount && 
+            this.spawnTimer >= this.currentScript.spawnDelay) {
+            this.spawnEnemy(enemyManager);
+            this.spawnTimer = 0;
+        }
+        
+        // Check if wave is complete
+        if (this.enemiesSpawned >= this.currentScript.enemyCount) {
+            this.currentScript = null;
+        }
+    }
+    
+    /**
+     * Spawn a single enemy for current wave
+     * @param {Object} enemyManager - Enemy manager reference
+     */
+    spawnEnemy(enemyManager) {
+        if (!this.currentScript) return;
+        
+        const enemyTypes = ['redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
+        const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+        
+        const enemy = enemyManager.spawnEnemy(enemyType);
+        if (enemy) {
+            // Initialize with enhanced movement system
+            const enemyState = enemyManager.enhancedMovement.initializeEnemyState(
+                enemy, 
+                this.currentScript.formation, 
+                this.enemiesSpawned
+            );
+            
+            // Store enemy state
+            enemy.enemyState = enemyState;
+            enemyManager.enemyStates.push(enemyState);
+            
+            this.enemiesSpawned++;
+            console.log(`Spawned enemy ${this.enemiesSpawned}/${this.currentScript.enemyCount}`);
+        }
+    }
+    
+    /**
+     * Get next wave script
+     * @returns {Object} Next wave script or null
+     */
+    getNextWave() {
+        const waveName = `wave${this.currentWave}`;
+        return this.waveScripts[waveName] || null;
+    }
+    
+    /**
+     * Advance to next wave
+     */
+    advanceWave() {
+        this.currentWave++;
+        console.log(`Advanced to wave ${this.currentWave}`);
+    }
+    
+    /**
+     * Reset wave progression
+     */
+    resetWaves() {
+        this.currentWave = 1;
+        this.currentScript = null;
+        this.enemiesSpawned = 0;
+        this.spawnTimer = 0;
+    }
+    
+    /**
+     * Add custom wave script
+     * @param {string} name - Wave name
+     * @param {Object} script - Wave script configuration
+     */
+    addWaveScript(name, script) {
+        this.waveScripts[name] = script;
+        console.log(`Added custom wave script: ${name}`);
+    }
+    
+    /**
+     * Get wave statistics
+     * @returns {Object} Wave statistics
+     */
+    getStats() {
+        return {
+            currentWave: this.currentWave,
+            totalWaves: Object.keys(this.waveScripts).length,
+            currentScript: this.currentScript ? this.currentScript.formation : null,
+            enemiesSpawned: this.enemiesSpawned
+        };
+    }
+}
 
 class WaveManager {
     constructor(scene) {
         this.scene = scene;
+        this.waveScripting = new WaveScriptingSystem();
         this.currentPhase = 1;
         this.currentWave = 1;
-        this.wavesInPhase = 0;
+        this.wavesPerPhase = 3;
+        this.phaseTimer = 0;
+        this.phaseDelay = 5000; // 5 seconds between phases
+        
+        // Wave progression
+        this.waveProgression = [
+            'wave1', 'wave2', 'wave3', 'wave4', 'wave5'
+        ];
+        
+        this.currentWaveIndex = 0;
         this.isWaveActive = false;
-        this.isPhaseTransition = false;
-        this.waveTimer = null;
-        this.phaseTimer = null;
         
-        // Difficulty tracking
-        this.enemySpeed = GameConfig.enemySpeed;
-        this.enemyFireRate = GameConfig.enemyFireChance;
-        
-        console.log('WaveManager: Initialized');
+        console.log('WaveManager: Initialized with scripting system');
     }
     
+    /**
+     * Start the wave system
+     */
     startGame() {
-        console.log('WaveManager: Starting game loop');
         this.currentPhase = 1;
         this.currentWave = 1;
-        this.wavesInPhase = 0;
+        this.currentWaveIndex = 0;
         this.isWaveActive = false;
-        this.isPhaseTransition = false;
+        this.phaseTimer = 0;
         
-        // Start first wave
+        console.log('WaveManager: Game started');
         this.startNextWave();
     }
     
-    startNextWave() {
-        if (this.isPhaseTransition) return;
+    /**
+     * Update wave management
+     * @param {number} deltaTime - Time since last frame
+     */
+    update(deltaTime) {
+        // Update current wave spawning
+        if (this.isWaveActive) {
+            this.waveScripting.update(deltaTime, this.scene.enemyManager);
+        }
         
-        this.wavesInPhase++;
-        this.isWaveActive = true;
-        
-        console.log(`WaveManager: Starting Phase ${this.currentPhase}, Wave ${this.wavesInPhase}`);
-        
-        // Determine enemy count for this wave
-        const enemyCount = this.getEnemyCountForWave();
-        
-        // Spawn wave with specific enemy count
-        this.spawnWave(enemyCount);
-        
-        // Set up wave completion check
-        this.checkWaveCompletion();
-    }
-    
-    getEnemyCountForWave() {
-        const phaseKey = `phase${this.currentPhase}`;
-        const enemyCounts = GameConfig.waves.enemiesPerWave[phaseKey] || GameConfig.waves.enemiesPerWave.phase1;
-        
-        // Get enemy count for current wave (1-indexed)
-        const waveIndex = Math.min(this.wavesInPhase - 1, enemyCounts.length - 1);
-        return enemyCounts[waveIndex] || enemyCounts[enemyCounts.length - 1];
-    }
-    
-    spawnWave(enemyCount) {
-        console.log(`WaveManager: Spawning wave with ${enemyCount} enemies`);
-        
-        // Choose formation based on wave number and enemy count
-        const formation = this.chooseFormation(enemyCount);
-        
-        // Spawn enemies with the chosen formation
-        this.spawnFormation(formation, enemyCount);
-        
-        // Add visual effects to new enemies
-        this.scene.effectsManager.addEnemyVisualEffects(this.scene.enemyManager.getEnemies());
-    }
-    
-    chooseFormation(enemyCount) {
-        const formations = ['v', 'line', 'circle'];
-        
-        if (enemyCount <= 4) {
-            return 'v';
-        } else if (enemyCount <= 6) {
-            return 'line';
-        } else {
-            return 'circle';
+        // Check for phase transitions
+        this.phaseTimer += deltaTime;
+        if (this.phaseTimer > this.phaseDelay && !this.isWaveActive) {
+            this.nextPhase();
         }
     }
     
-    spawnFormation(formationType, enemyCount) {
-        switch (formationType) {
-            case 'v':
-                this.spawnVFormation(enemyCount);
-                break;
-            case 'line':
-                this.spawnLineFormation(enemyCount);
-                break;
-            case 'circle':
-                this.spawnCircleFormation(enemyCount);
-                break;
+    /**
+     * Check if current wave is complete
+     */
+    checkWaveComplete() {
+        // Get current enemy count
+        const enemyCount = this.scene.enemyManager.getEnemyCount();
+        
+        // Debug logging
+        if (this.isWaveActive && enemyCount === 0) {
+            console.log(`Wave completion detected! Enemy count: ${enemyCount}, Wave active: ${this.isWaveActive}`);
         }
-    }
-    
-    spawnVFormation(enemyCount) {
-        for (let i = 0; i < enemyCount; i++) {
-            const angle = (i / (enemyCount - 1)) * Math.PI * 0.6 - Math.PI * 0.3;
-            this.spawnEnemy(angle, 'v', i);
-        }
-    }
-    
-    spawnLineFormation(enemyCount) {
-        for (let i = 0; i < enemyCount; i++) {
-            const angle = (i / (enemyCount - 1)) * Math.PI * 0.8 - Math.PI * 0.4;
-            this.spawnEnemy(angle, 'line', i);
-        }
-    }
-    
-    spawnCircleFormation(enemyCount) {
-        for (let i = 0; i < enemyCount; i++) {
-            const angle = (i / enemyCount) * Math.PI * 2;
-            this.spawnEnemy(angle, 'circle', i);
-        }
-    }
-    
-    spawnEnemy(angle, formationType, index) {
-        const enemyTypes = ['redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
-        const enemyType = enemyTypes[Phaser.Math.Between(0, enemyTypes.length - 1)];
         
-        const enemy = this.scene.enemyManager.enemies.create(
-            GameConfig.centerX, 
-            GameConfig.centerY, 
-            enemyType
-        );
-        
-        if (!enemy) return;
-        
-        // Set enemy properties
-        enemy.setScale(GameConfig.enemyBulletScale);
-        
-        // Use the new off-screen spawning system
-        this.scene.enemyManager.movementManager.spawnEnemyOffScreen(enemy, formationType, index);
-        
-        console.log(`Enemy ${index} spawned off-screen with ${formationType} formation`);
-    }
-    
-    checkWaveCompletion() {
-        // Check if all enemies are destroyed or have returned off-screen
-        const activeEnemies = this.scene.enemyManager.getEnemyCount();
-        const formationEnemies = this.scene.enemyManager.movementManager.getFormationEnemies().length;
-        const attackingEnemies = this.scene.enemyManager.movementManager.getAttackGroups().flat().length;
-        
-        // Wave is complete when no enemies are active, in formation, or attacking
-        if (activeEnemies === 0 && formationEnemies === 0 && attackingEnemies === 0 && this.isWaveActive) {
-            this.completeWave();
-        } else {
-            // Check again in 500ms
-            this.scene.time.delayedCall(500, () => this.checkWaveCompletion());
-        }
-    }
-    
-    completeWave() {
-        console.log(`WaveManager: Wave ${this.wavesInPhase} completed`);
-        this.isWaveActive = false;
-        
-        // Award points for wave completion
-        const wavePoints = this.wavesInPhase * 100;
-        this.scene.addScore(wavePoints);
-        
-        // Check if phase is complete
-        if (this.wavesInPhase >= GameConfig.waves.wavesPerPhase) {
-            this.completePhase();
-        } else {
-            // Start next wave after delay
-            this.scene.time.delayedCall(GameConfig.waves.waveDelay, () => {
-                this.startNextWave();
+        // Check if wave is active and all enemies are eliminated
+        if (this.isWaveActive && enemyCount === 0) {
+            this.isWaveActive = false;
+            this.phaseTimer = 0;
+            
+            console.log(`Wave ${this.currentWave} completed!`);
+            
+            // Add a small delay before advancing to allow for cleanup
+            this.scene.time.delayedCall(500, () => {
+                this.advanceWaveOrPhase();
             });
         }
     }
     
-    completePhase() {
-        console.log(`WaveManager: Phase ${this.currentPhase} completed`);
-        this.isPhaseTransition = true;
+    /**
+     * Advance to next wave or phase
+     */
+    advanceWaveOrPhase() {
+        console.log(`Advancing wave/phase. Current wave: ${this.currentWave}, Waves per phase: ${this.wavesPerPhase}`);
         
-        // Award bonus points for phase completion
-        const phaseBonus = this.currentPhase * 500;
-        this.scene.addScore(phaseBonus);
-        
-        // Show phase completion message
-        this.showPhaseCompleteMessage();
-        
-        // Increase difficulty
-        this.increaseDifficulty();
-        
-        // Move to next phase after delay
-        this.scene.time.delayedCall(GameConfig.waves.phaseDelay, () => {
-            this.startNextPhase();
-        });
-    }
-    
-    startNextPhase() {
-        this.currentPhase++;
-        this.wavesInPhase = 0;
-        this.isPhaseTransition = false;
-        
-        console.log(`WaveManager: Starting Phase ${this.currentPhase}`);
-        
-        // Update UI
-        this.scene.updatePhaseDisplay();
-        
-        // Check for boss wave
-        if (this.currentPhase % GameConfig.waves.bossWaveInterval === 0) {
-            this.startBossWave();
+        // Check if we've completed all waves in current phase
+        if (this.currentWave >= this.wavesPerPhase) {
+            // Move to next phase
+            console.log('Moving to next phase');
+            this.nextPhase();
         } else {
+            // Move to next wave in current phase
+            console.log('Moving to next wave in current phase');
             this.startNextWave();
         }
     }
     
-    startBossWave() {
-        console.log(`WaveManager: Starting Boss Wave for Phase ${this.currentPhase}`);
+    /**
+     * Start the next wave
+     */
+    startNextWave() {
+        if (this.currentWaveIndex >= this.waveProgression.length) {
+            // All waves completed, restart from beginning with increased difficulty
+            this.currentWaveIndex = 0;
+            this.currentPhase++;
+            console.log(`Completed all waves, advancing to Phase ${this.currentPhase}`);
+        }
         
-        // For now, just spawn a larger wave
-        // TODO: Implement actual boss enemies
-        this.spawnWave(10); // Boss wave with 10 enemies
-        this.scene.effectsManager.addEnemyVisualEffects(this.scene.enemyManager.getEnemies());
-        this.checkWaveCompletion();
+        const waveName = this.waveProgression[this.currentWaveIndex];
+        this.waveScripting.executeWave(waveName, this.scene.enemyManager);
+        
+        this.isWaveActive = true;
+        this.currentWave++;
+        this.currentWaveIndex++;
+        
+        console.log(`Starting wave: ${waveName} (Phase ${this.currentPhase}, Wave ${this.currentWave})`);
+        
+        // Update UI display
+        if (this.scene.updatePhaseDisplay) {
+            this.scene.updatePhaseDisplay();
+        }
     }
     
+    /**
+     * Move to next phase
+     */
+    nextPhase() {
+        this.currentPhase++;
+        this.currentWave = 1;
+        this.phaseTimer = 0;
+        
+        // Increase difficulty
+        this.increaseDifficulty();
+        
+        console.log(`Phase ${this.currentPhase} started with increased difficulty`);
+        
+        // Show phase transition message
+        this.showPhaseTransition();
+        
+        // Start first wave of new phase
+        this.startNextWave();
+    }
+    
+    /**
+     * Show phase transition message
+     */
+    showPhaseTransition() {
+        if (this.scene.add) {
+            const phaseText = this.scene.add.text(GameConfig.centerX, GameConfig.centerY, 
+                `PHASE ${this.currentPhase}`, {
+                fontSize: '36px',
+                fill: '#ffff00',
+                fontFamily: 'Courier New',
+                fontWeight: 'bold'
+            }).setOrigin(0.5);
+            
+            // Animate and remove
+            this.scene.tweens.add({
+                targets: phaseText,
+                scaleX: 1.5,
+                scaleY: 1.5,
+                alpha: 0,
+                duration: 2000,
+                onComplete: () => phaseText.destroy()
+            });
+        }
+    }
+    
+    /**
+     * Increase difficulty for new phase
+     */
     increaseDifficulty() {
         // Increase enemy speed
-        this.enemySpeed = Math.min(
-            this.enemySpeed + GameConfig.enemyScaling.speedIncrease,
-            GameConfig.enemyScaling.maxSpeed
-        );
+        this.scene.enemyManager.increaseSpeed();
         
         // Increase fire rate
-        this.enemyFireRate = Math.min(
-            this.enemyFireRate + GameConfig.enemyScaling.fireRateIncrease,
+        const newFireRate = Math.min(
+            GameConfig.enemyFireChance + 5, 
             GameConfig.enemyScaling.maxFireRate
         );
+        this.scene.enemyManager.updateFireRate(newFireRate);
         
-        console.log(`WaveManager: Difficulty increased - Speed: ${this.enemySpeed}, Fire Rate: ${this.enemyFireRate}`);
+        // Update wave scripts for increased difficulty
+        if (this.waveScripting && this.waveScripting.waveScripts) {
+            Object.keys(this.waveScripting.waveScripts).forEach(waveName => {
+                const script = this.waveScripting.waveScripts[waveName];
+                if (script) {
+                    script.orbitDuration = Math.max(script.orbitDuration - 200, 1000);
+                    script.attackChance = Math.min(script.attackChance + 0.1, 0.9);
+                }
+            });
+        }
         
-        // Update enemy manager with new values
-        this.scene.enemyManager.enemySpeed = this.enemySpeed;
-        this.scene.enemyManager.updateFireRate(this.enemyFireRate);
+        console.log(`Difficulty increased for Phase ${this.currentPhase}`);
     }
     
-    showPhaseCompleteMessage() {
-        const phaseText = this.scene.add.text(GameConfig.centerX, GameConfig.centerY - 100, 
-            `PHASE ${this.currentPhase} COMPLETE!`, {
-            fontSize: '32px',
-            fill: '#00ff00',
-            fontFamily: 'Courier New',
-            fontWeight: 'bold'
-        }).setOrigin(0.5);
-        
-        const bonusText = this.scene.add.text(GameConfig.centerX, GameConfig.centerY - 50,
-            `BONUS: ${this.currentPhase * 500} POINTS`, {
-            fontSize: '24px',
-            fill: '#ffff00',
-            fontFamily: 'Courier New'
-        }).setOrigin(0.5);
-        
-        // Animate and remove after 3 seconds
-        this.scene.tweens.add({
-            targets: [phaseText, bonusText],
-            alpha: 0,
-            duration: 3000,
-            onComplete: () => {
-                phaseText.destroy();
-                bonusText.destroy();
-            }
-        });
-        
-        // Play phase complete sound
-        this.scene.audioManager.playLevelUp();
-    }
-    
+    /**
+     * Get current phase
+     * @returns {number} Current phase number
+     */
     getCurrentPhase() {
         return this.currentPhase;
     }
     
+    /**
+     * Get current wave
+     * @returns {number} Current wave number
+     */
     getCurrentWave() {
-        return this.wavesInPhase;
+        return this.currentWave;
     }
     
-    isWaveInProgress() {
-        return this.isWaveActive;
-    }
-    
+    /**
+     * Reset wave system
+     */
     reset() {
         this.currentPhase = 1;
         this.currentWave = 1;
-        this.wavesInPhase = 0;
+        this.currentWaveIndex = 0;
         this.isWaveActive = false;
-        this.isPhaseTransition = false;
-        this.enemySpeed = GameConfig.enemySpeed;
-        this.enemyFireRate = GameConfig.enemyFireChance;
-        
-        if (this.waveTimer) {
-            this.waveTimer.destroy();
-        }
-        if (this.phaseTimer) {
-            this.phaseTimer.destroy();
-        }
+        this.phaseTimer = 0;
+        this.waveScripting.resetWaves();
+    }
+    
+    /**
+     * Get wave statistics
+     * @returns {Object} Wave statistics
+     */
+    getStats() {
+        return {
+            phase: this.currentPhase,
+            wave: this.currentWave,
+            isActive: this.isWaveActive,
+            phaseTimer: this.phaseTimer,
+            ...this.waveScripting.getStats()
+        };
     }
 }
 

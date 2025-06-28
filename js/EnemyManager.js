@@ -1,6 +1,6 @@
 /**
  * Enemy Manager Class
- * Handles enemy spawning, movement patterns, and firing
+ * Handles enemy spawning, movement patterns, and firing with enhanced movement system
  */
 
 class EnemyManager {
@@ -12,25 +12,28 @@ class EnemyManager {
         this.enemySpeed = GameConfig.enemySpeed;
         this.enemyFireTimer = null;
         
-        // Initialize movement manager
-        this.movementManager = new EnemyMovementManager(scene);
+        // Initialize enhanced movement system
+        this.enhancedMovement = new EnhancedEnemyMovement(scene);
         
-        // Get reference to enhanced movement system from scene
-        this.enhancedMovement = null;
-        this.tunnelSystem = null;
-        this.spiralGenerator = null;
+        // Store enemy states for enhanced movement
+        this.enemyStates = [];
         
         console.log('EnemyManager: Setting up enemy firing...');
         this.setupEnemyFiring();
         console.log('EnemyManager: Constructor completed');
     }
     
-    // Set references to tunnel systems (called from GameScene)
+    /**
+     * Set tunnel systems for enhanced movement
+     * @param {Object} enhancedMovement - Enhanced movement system
+     * @param {Object} tunnelSystem - Tunnel coordinate system
+     * @param {Object} spiralGenerator - Spiral path generator
+     */
     setTunnelSystems(enhancedMovement, tunnelSystem, spiralGenerator) {
         this.enhancedMovement = enhancedMovement;
         this.tunnelSystem = tunnelSystem;
         this.spiralGenerator = spiralGenerator;
-        console.log('EnemyManager: Tunnel systems connected');
+        console.log('EnemyManager: Tunnel systems configured');
     }
     
     setupEnemyFiring() {
@@ -48,6 +51,32 @@ class EnemyManager {
         console.log(`EnemyManager: Fire rate updated to ${newFireRate}%`);
     }
     
+    /**
+     * Spawn a single enemy
+     * @param {string} enemyType - Type of enemy to spawn
+     * @returns {Object} Spawned enemy or null
+     */
+    spawnEnemy(enemyType = null) {
+        if (!enemyType) {
+            const enemyTypes = ['redEnemy', 'greenEnemy', 'yellowEnemy', 'purpleEnemy'];
+            enemyType = enemyTypes[Phaser.Math.Between(0, enemyTypes.length - 1)];
+        }
+        
+        try {
+            const enemy = this.enemies.create(GameConfig.centerX, GameConfig.centerY, enemyType);
+            if (enemy) {
+                enemy.setScale(GameConfig.enemyBulletScale);
+                console.log(`Enemy spawned: ${enemyType}`);
+                return enemy;
+            }
+        } catch (error) {
+            console.error('EnemyManager: Error spawning enemy:', error);
+            window.gameErrorHandler.handleSystemError('EnemyManager', error, { phase: 'spawn_enemy' });
+        }
+        
+        return null;
+    }
+    
     spawnEnemyFormation() {
         const formations = [
             this.spawnVFormation.bind(this),
@@ -60,47 +89,26 @@ class EnemyManager {
     }
     
     spawnVFormation() {
-        console.log('Spawning V formation with tunnel system...');
-        
-        // Use new tunnel system if available
-        if (this.enhancedMovement && this.spiralGenerator) {
-            this.spawnFormationWithTunnelSystem('v', 5);
-        } else {
-            // Fallback to old system
-            this.spawnVFormationOld();
-        }
+        console.log('Spawning V formation with enhanced movement system...');
+        this.spawnFormationWithEnhancedSystem('v', 5);
     }
     
     spawnLineFormation() {
-        console.log('Spawning Line formation with tunnel system...');
-        
-        // Use new tunnel system if available
-        if (this.enhancedMovement && this.spiralGenerator) {
-            this.spawnFormationWithTunnelSystem('line', 6);
-        } else {
-            // Fallback to old system
-            this.spawnLineFormationOld();
-        }
+        console.log('Spawning Line formation with enhanced movement system...');
+        this.spawnFormationWithEnhancedSystem('line', 6);
     }
     
     spawnCircleFormation() {
-        console.log('Spawning Circle formation with tunnel system...');
-        
-        // Use new tunnel system if available
-        if (this.enhancedMovement && this.spiralGenerator) {
-            this.spawnFormationWithTunnelSystem('circle', 8);
-        } else {
-            // Fallback to old system
-            this.spawnCircleFormationOld();
-        }
+        console.log('Spawning Circle formation with enhanced movement system...');
+        this.spawnFormationWithEnhancedSystem('circle', 8);
     }
     
-    // New tunnel system spawning
-    spawnFormationWithTunnelSystem(formationType, enemyCount) {
-        console.log(`Spawning ${formationType} formation with ${enemyCount} enemies using tunnel system`);
+    // Enhanced formation spawning
+    spawnFormationWithEnhancedSystem(formationType, enemyCount) {
+        console.log(`Spawning ${formationType} formation with ${enemyCount} enemies using enhanced system`);
         
         // Generate formation paths
-        const formationPaths = this.spiralGenerator.generateFormationPaths(
+        const formationPaths = this.enhancedMovement.spiralGenerator.generateFormationPaths(
             formationType,
             enemyCount,
             200, // target radius
@@ -127,11 +135,10 @@ class EnemyManager {
                 const enemyState = this.enhancedMovement.initializeEnemyState(enemy, formationType, index);
                 enemy.enemyState = enemyState;
                 
-                // Set initial position and scale
-                const initialScale = this.tunnelSystem.calculateSpriteScale(0);
-                enemy.setScale(initialScale);
+                // Store enemy state
+                this.enemyStates.push(enemyState);
                 
-                console.log(`Enemy ${index} created successfully with tunnel system`);
+                console.log(`Enemy ${index} created successfully with enhanced movement system`);
             } catch (error) {
                 console.error(`Error creating enemy ${index}:`, error);
             }
@@ -149,7 +156,7 @@ class EnemyManager {
             const enemyType = enemyTypes[enemyTypeNum - 1];
             
             const enemy = this.enemies.create(GameConfig.centerX, GameConfig.centerY, enemyType);
-            this.movementManager.spawnEnemyOffScreen(enemy, 'v', i);
+            this.enhancedMovement.spawnEnemyOffScreen(enemy, 'v', i);
         }
     }
     
@@ -160,7 +167,7 @@ class EnemyManager {
             const enemyType = enemyTypes[enemyTypeNum - 1];
             
             const enemy = this.enemies.create(GameConfig.centerX, GameConfig.centerY, enemyType);
-            this.movementManager.spawnEnemyOffScreen(enemy, 'line', i);
+            this.enhancedMovement.spawnEnemyOffScreen(enemy, 'line', i);
         }
     }
     
@@ -171,21 +178,30 @@ class EnemyManager {
             const enemyType = enemyTypes[enemyTypeNum - 1];
             
             const enemy = this.enemies.create(GameConfig.centerX, GameConfig.centerY, enemyType);
-            this.movementManager.spawnEnemyOffScreen(enemy, 'circle', i);
+            this.enhancedMovement.spawnEnemyOffScreen(enemy, 'circle', i);
         }
     }
     
     updateEnemyMovement() {
-        // Update wave spawning
-        this.movementManager.updateWaveSpawning();
+        // Get deltaTime from Phaser (in seconds)
+        const deltaTime = this.scene.game.loop.delta;
         
-        // Update all enemy movements
-        this.enemies.children.entries.forEach((enemy) => {
-            if (!enemy.active) return;
-            
-            // Use the new Gyruss-style movement system
-            this.movementManager.updateEnemyMovement(enemy);
+        // Debug deltaTime more frequently to understand the issue
+        if (Math.random() < 0.1) { // 10% chance to log
+            console.log(`DeltaTime: ${deltaTime}s (${deltaTime * 1000}ms) - Expected: ~0.016s`);
+        }
+        
+        // Update all enemy movements using enhanced system
+        this.enemyStates.forEach(enemyState => {
+            if (enemyState.enemy.active) {
+                this.enhancedMovement.updateEnemyMovement(enemyState, deltaTime);
+            }
         });
+        
+        // Clean up destroyed enemies
+        this.enemyStates = this.enemyStates.filter(enemyState => 
+            enemyState.enemy.active && enemyState.phase !== 'DESTROY'
+        );
     }
     
     enemiesFire() {
@@ -197,24 +213,28 @@ class EnemyManager {
                 // Set enemy bullet scale
                 bullet.setScale(GameConfig.enemyBulletScale);
                 
-                // Calculate direction from center toward the enemy's position (tube axis)
-                const angleFromCenter = Math.atan2(enemy.y - GameConfig.centerY, enemy.x - GameConfig.centerX);
+                // Get player position
+                const playerX = this.scene.player.getSprite().x;
+                const playerY = this.scene.player.getSprite().y;
                 
-                // Move bullet along tube axis (from center outward, but starting from enemy position)
+                // Calculate direction from enemy toward player
+                const angleToPlayer = Math.atan2(playerY - enemy.y, playerX - enemy.x);
+                
+                // Move bullet toward player
                 bullet.setVelocity(
-                    Math.cos(angleFromCenter) * GameConfig.enemyBulletSpeed,
-                    Math.sin(angleFromCenter) * GameConfig.enemyBulletSpeed
+                    Math.cos(angleToPlayer) * GameConfig.enemyBulletSpeed,
+                    Math.sin(angleToPlayer) * GameConfig.enemyBulletSpeed
                 );
                 
-                // Rotate bullet to match tube direction
-                bullet.rotation = angleFromCenter;
+                // Rotate bullet to match direction
+                bullet.rotation = angleToPlayer;
                 
                 // Add tube movement data
                 bullet.tubeMovement = true;
                 bullet.startX = enemy.x;
                 bullet.startY = enemy.y;
-                bullet.targetX = GameConfig.centerX + Math.cos(angleFromCenter) * (GameConfig.playerRadius + 100);
-                bullet.targetY = GameConfig.centerY + Math.sin(angleFromCenter) * (GameConfig.playerRadius + 100);
+                bullet.targetX = playerX;
+                bullet.targetY = playerY;
             }
         });
     }
@@ -224,16 +244,35 @@ class EnemyManager {
     }
     
     getEnemyCount() {
-        return this.enemies.children.entries.length;
+        // Count active enemies in physics group
+        const physicsGroupCount = this.enemies.children.entries.length;
+        
+        // Count active enemies in enhanced movement system
+        const enhancedSystemCount = this.enemyStates.filter(enemyState => 
+            enemyState.enemy.active && enemyState.phase !== 'DESTROY'
+        ).length;
+        
+        // Return the higher count to ensure we don't miss any enemies
+        const totalCount = Math.max(physicsGroupCount, enhancedSystemCount);
+        
+        // Debug logging if counts don't match
+        if (physicsGroupCount !== enhancedSystemCount) {
+            console.log(`Enemy count mismatch - Physics group: ${physicsGroupCount}, Enhanced system: ${enhancedSystemCount}`);
+        }
+        
+        return totalCount;
     }
     
     increaseSpeed() {
         this.enemySpeed += 20;
+        console.log(`EnemyManager: Speed increased to ${this.enemySpeed}`);
     }
     
     reset() {
         this.enemies.clear(true, true);
+        this.enemyStates = [];
         this.enemySpeed = GameConfig.enemySpeed;
+        console.log('EnemyManager: Reset completed');
     }
 }
 

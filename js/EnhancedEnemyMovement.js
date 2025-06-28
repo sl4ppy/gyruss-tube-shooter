@@ -1,136 +1,130 @@
 /**
  * Enhanced Enemy Movement System
- * Comprehensive enemy movement system for Gyruss-style tunnel effect
+ * Complete enemy movement system for Gyruss-style tube effect
  */
 
+class EnemyState {
+    constructor(enemy, formationType, index) {
+        this.enemy = enemy;
+        this.formationType = formationType;
+        this.index = index;
+        
+        // Position data
+        this.radius = 0;
+        this.angle = 0;
+        this.x = GameConfig.centerX;
+        this.y = GameConfig.centerY;
+        
+        // Phase management
+        this.phase = 'SPIRAL';
+        this.phaseTimer = 0;
+        this.pathIndex = 0;
+        
+        // Movement data
+        this.spiralPath = null;
+        this.orbitRadius = 200;
+        this.orbitSpeed = 0.02;
+        this.attackTarget = null;
+        
+        // Visual data
+        this.sprite = enemy;
+        this.scale = 1.0;
+        this.alpha = 1.0;
+        
+        // Attack data
+        this.attackConfig = {
+            approachSpeed: 80,
+            curveIntensity: 0.5,
+            targetRadius: 50
+        };
+        
+        // Phase timing configuration
+        this.phaseTiming = {
+            spiralDuration: 3000,    // 3 seconds for spiral entry
+            orbitDuration: 5000,     // 5 seconds in orbit
+            attackDuration: 4000,    // 4 seconds for attack
+            returnDuration: 2000     // 2 seconds to return
+        };
+    }
+}
+
 class EnhancedEnemyMovement {
-    constructor(scene, tunnelSystem, spiralGenerator) {
+    constructor(scene) {
         this.scene = scene;
-        this.tunnelSystem = tunnelSystem;
-        this.spiralGenerator = spiralGenerator;
+        this.tunnelSystem = new TunnelCoordinateSystem();
+        this.spiralGenerator = new SpiralPathGenerator();
         
         // Movement phases
         this.phases = {
-            SPAWN: 'spawn',
-            SPIRAL: 'spiral',
-            ORBIT: 'orbit',
-            ATTACK: 'attack',
-            RETURN: 'return',
-            DESTROY: 'destroy'
+            SPIRAL: 'SPIRAL',
+            ORBIT: 'ORBIT',
+            ATTACK: 'ATTACK',
+            RETURN: 'RETURN',
+            DESTROY: 'DESTROY'
         };
         
-        // Attack patterns
-        this.attackPatterns = {
-            direct: {
-                name: 'Direct Attack',
-                radiusFunction: (t) => 1 - t, // Linear radius decrease
-                angleFunction: (t) => 0        // No angle change
-            },
-            spiral: {
-                name: 'Spiral Attack',
-                radiusFunction: (t) => 1 - t,
-                angleFunction: (t) => t * Math.PI * 2 // Full rotation
-            },
-            swoop: {
-                name: 'Swoop Attack',
-                radiusFunction: (t) => 1 - Math.sin(t * Math.PI) * 0.3,
-                angleFunction: (t) => Math.sin(t * Math.PI * 2) * 0.5
-            },
-            zigzag: {
-                name: 'Zigzag Attack',
-                radiusFunction: (t) => 1 - t,
-                angleFunction: (t) => Math.sin(t * Math.PI * 8) * 0.3
-            }
+        // Orbit phase configuration
+        this.orbitConfig = {
+            radius: 200,
+            angularSpeed: 0.02, // radians per frame
+            orbitDuration: 5000 // milliseconds - increased from 3000
+        };
+        
+        // Attack phase configuration
+        this.attackConfig = {
+            approachSpeed: 80, // pixels per frame
+            curveIntensity: 0.5, // How much the path curves
+            targetRadius: 50 // How close to center to get
         };
         
         console.log('EnhancedEnemyMovement: Initialized for Gyruss-style movement');
     }
     
     /**
-     * Initialize enemy state with comprehensive movement data
+     * Initialize enemy state for movement
      * @param {Object} enemy - Enemy sprite
      * @param {string} formationType - Formation type
      * @param {number} index - Enemy index in formation
-     * @returns {Object} Enemy state data
+     * @returns {EnemyState} Initialized enemy state
      */
     initializeEnemyState(enemy, formationType, index) {
-        const state = {
-            // Basic properties
-            enemy: enemy,
-            formationType: formationType,
-            formationIndex: index,
-            
-            // Current phase
-            phase: this.phases.SPAWN,
-            
-            // Polar coordinates
-            radius: 0,
-            angle: 0,
-            
-            // Movement parameters
-            radiusSpeed: 0,
-            angleSpeed: 0,
-            
-            // Phase-specific data
-            spiral: {
-                path: null,
-                currentFrame: 0,
-                duration: 180, // 3 seconds at 60fps
-                completed: false
-            },
-            
-            orbit: {
-                targetRadius: 200,
-                orbitSpeed: 0.02,
-                duration: 300, // 5 seconds
-                startTime: 0,
-                completed: false
-            },
-            
-            attack: {
-                pattern: 'direct',
-                startRadius: 0,
-                startAngle: 0,
-                currentFrame: 0,
-                duration: 120, // 2 seconds
-                completed: false
-            },
-            
-            return: {
-                targetRadius: 800,
-                returnSpeed: 3,
-                completed: false
-            },
-            
-            // Visual properties
-            scale: 1.0,
-            rotation: 0,
-            
-            // Timing
-            phaseStartTime: 0,
-            totalTime: 0
-        };
+        const enemyState = new EnemyState(enemy, formationType, index);
         
-        return state;
+        // Generate spiral path with longer duration
+        const startAngle = (index / 8) * Math.PI * 2;
+        enemyState.spiralPath = this.spiralGenerator.generateSpiralPath(startAngle);
+        
+        // Set initial position at center
+        enemy.x = GameConfig.centerX;
+        enemy.y = GameConfig.centerY;
+        
+        // Initialize phase timer
+        enemyState.phaseTimer = 0;
+        
+        console.log(`Enemy ${index} initialized with ${formationType} formation, starting spiral phase`);
+        
+        return enemyState;
     }
     
     /**
-     * Update enemy movement for current frame
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
+     * Update enemy movement
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} deltaTime - Time since last frame (ms)
      */
     updateEnemyMovement(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
+        // Store previous position for bounds checking
+        const prevX = enemyState.x;
+        const prevY = enemyState.y;
         
-        // Update total time
-        enemyState.totalTime += deltaTime;
+        // Use deltaTime directly (already in ms)
+        enemyState.phaseTimer += deltaTime;
         
-        // Update based on current phase
+        // Debug logging for phase transitions (less frequent)
+        if (enemyState.phaseTimer % 2000 < deltaTime) { // Log every 2 seconds
+            console.log(`Enemy ${enemyState.index} in ${enemyState.phase} phase, timer: ${Math.round(enemyState.phaseTimer)}ms`);
+        }
+        
         switch (enemyState.phase) {
-            case this.phases.SPAWN:
-                this.updateSpawnPhase(enemyState, deltaTime);
-                break;
-                
             case this.phases.SPIRAL:
                 this.updateSpiralPhase(enemyState, deltaTime);
                 break;
@@ -146,322 +140,354 @@ class EnhancedEnemyMovement {
             case this.phases.RETURN:
                 this.updateReturnPhase(enemyState, deltaTime);
                 break;
-                
-            case this.phases.DESTROY:
-                this.destroyEnemy(enemyState);
-                break;
         }
         
-        // Update visual properties
+        // Apply bounds checking to prevent enemies from going off-screen
+        this.applyBoundsChecking(enemyState, prevX, prevY);
+        
+        // Update visual effects
         this.updateEnemyVisuals(enemyState);
     }
     
     /**
-     * Update spawn phase - enemy appears at center
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
-     */
-    updateSpawnPhase(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
-        
-        // Position at center
-        const centerPos = this.tunnelSystem.getCenterPosition();
-        enemy.x = centerPos.x;
-        enemy.y = centerPos.y;
-        
-        // Initialize spiral path
-        const startAngle = this.getFormationAngle(enemyState.formationType, enemyState.formationIndex);
-        enemyState.angle = startAngle;
-        
-        // Generate spiral path
-        enemyState.spiral.path = this.spiralGenerator.generateSpiralPath(
-            'gyruss',
-            0,
-            enemyState.orbit.targetRadius,
-            startAngle,
-            enemyState.spiral.duration
-        );
-        
-        // Transition to spiral phase
-        enemyState.phase = this.phases.SPIRAL;
-        enemyState.phaseStartTime = enemyState.totalTime;
-        
-        console.log(`Enemy ${enemyState.formationIndex} spawned, starting spiral entry`);
-    }
-    
-    /**
-     * Update spiral phase - enemy follows spiral path to formation
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
+     * Update spiral entry phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} deltaTime - Time since last frame in ms
      */
     updateSpiralPhase(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
-        const spiral = enemyState.spiral;
+        if (!enemyState.spiralPath) {
+            // Generate spiral path if not exists
+            const startAngle = (enemyState.index / 8) * Math.PI * 2;
+            enemyState.spiralPath = this.spiralGenerator.generateSpiralPath(startAngle);
+        }
         
-        // Update frame counter
-        spiral.currentFrame += deltaTime * 60; // Convert to frames
-        
-        if (spiral.currentFrame >= spiral.duration) {
+        // Check if spiral phase should complete based on timer
+        if (enemyState.phaseTimer >= enemyState.phaseTiming.spiralDuration) {
             // Spiral complete, transition to orbit
-            this.transitionToOrbit(enemyState);
+            enemyState.phase = this.phases.ORBIT;
+            enemyState.orbitRadius = enemyState.radius || 200;
+            enemyState.phaseTimer = 0; // Reset timer for new phase
+            console.log(`Enemy ${enemyState.index} completed spiral, entering orbit phase`);
             return;
         }
         
-        // Get current path point
-        const pathPoint = this.spiralGenerator.interpolatePathPoint(
-            spiral.path, 
-            spiral.currentFrame
-        );
-        
-        // Update enemy position and properties
-        enemy.x = pathPoint.x;
-        enemy.y = pathPoint.y;
-        enemyState.radius = pathPoint.radius;
-        enemyState.angle = pathPoint.angle;
-        enemyState.scale = pathPoint.scale;
-        
-        // Calculate velocity for smooth movement
-        const nextFrame = Math.min(spiral.currentFrame + 1, spiral.duration);
-        const nextPoint = this.spiralGenerator.interpolatePathPoint(spiral.path, nextFrame);
-        
-        const velocityX = (nextPoint.x - pathPoint.x) * 60; // Convert to per-second
-        const velocityY = (nextPoint.y - pathPoint.y) * 60;
-        
-        enemy.setVelocity(velocityX, velocityY);
-        enemyState.radiusSpeed = (nextPoint.radius - pathPoint.radius) * 60;
-        enemyState.angleSpeed = (nextPoint.angle - pathPoint.angle) * 60;
+        // Continue spiral movement
+        if (enemyState.pathIndex < enemyState.spiralPath.length) {
+            const idx = Math.floor(enemyState.pathIndex);
+            const pathPoint = enemyState.spiralPath[idx];
+            
+            if (pathPoint) {
+                // Update position
+                const screenPos = this.tunnelSystem.polarToScreen(pathPoint.radius, pathPoint.angle);
+                enemyState.x = screenPos.x;
+                enemyState.y = screenPos.y;
+                enemyState.radius = pathPoint.radius;
+                enemyState.angle = pathPoint.angle;
+                
+                // Update sprite position
+                enemyState.sprite.x = screenPos.x;
+                enemyState.sprite.y = screenPos.y;
+            }
+            // Progress through path based on time elapsed
+            const progressRate = (enemyState.spiralPath.length / enemyState.phaseTiming.spiralDuration) * deltaTime;
+            enemyState.pathIndex += progressRate;
+        }
     }
     
     /**
-     * Update orbit phase - enemy orbits at formation radius
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
+     * Update orbit phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} deltaTime - Time since last frame in ms
      */
     updateOrbitPhase(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
-        const orbit = enemyState.orbit;
-        
-        // Update orbit angle
-        enemyState.angle += orbit.orbitSpeed * deltaTime * 60;
-        
-        // Keep angle in range [0, 2π]
-        enemyState.angle = (enemyState.angle + Math.PI * 2) % (Math.PI * 2);
-        
-        // Update position
-        const screenPos = this.tunnelSystem.polarToScreen(enemyState.radius, enemyState.angle);
-        enemy.x = screenPos.x;
-        enemy.y = screenPos.y;
-        
-        // Calculate velocity for smooth movement
-        const nextAngle = enemyState.angle + orbit.orbitSpeed;
-        const nextPos = this.tunnelSystem.polarToScreen(enemyState.radius, nextAngle);
-        
-        const velocityX = (nextPos.x - screenPos.x) * 60;
-        const velocityY = (nextPos.y - screenPos.y) * 60;
-        
-        enemy.setVelocity(velocityX, velocityY);
-        enemyState.angleSpeed = orbit.orbitSpeed * 60;
-        enemyState.radiusSpeed = 0;
-        
-        // Check orbit duration
-        if (enemyState.totalTime - enemyState.phaseStartTime > orbit.duration / 60) {
-            orbit.completed = true;
-            // Ready for attack phase
+        // Check if orbit phase should complete
+        if (enemyState.phaseTimer >= enemyState.phaseTiming.orbitDuration) {
+            enemyState.phase = this.phases.ATTACK;
+            enemyState.phaseTimer = 0; // Reset timer for new phase
+            console.log(`Enemy ${enemyState.index} completed orbit, starting attack phase`);
+            return;
         }
+        
+        // Update angle for circular movement
+        enemyState.angle += this.orbitConfig.angularSpeed * deltaTime * 0.06; // 0.06 = 60/1000
+        
+        // Keep angle in 0-2π range
+        enemyState.angle = this.tunnelSystem.normalizeAngle(enemyState.angle);
+        
+        // Convert to screen coordinates
+        const screenPos = this.tunnelSystem.polarToScreen(enemyState.orbitRadius, enemyState.angle);
+        enemyState.x = screenPos.x;
+        enemyState.y = screenPos.y;
+        
+        // Update sprite position
+        enemyState.sprite.x = screenPos.x;
+        enemyState.sprite.y = screenPos.y;
     }
     
     /**
-     * Update attack phase - enemy attacks toward center
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
+     * Update attack phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} deltaTime - Time since last frame in ms
      */
     updateAttackPhase(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
-        const attack = enemyState.attack;
+        const currentRadius = Math.sqrt(
+            Math.pow(enemyState.x - GameConfig.centerX, 2) + 
+            Math.pow(enemyState.y - GameConfig.centerY, 2)
+        );
         
-        // Initialize attack if not started
-        if (!attack.completed && attack.currentFrame === 0) {
-            attack.startRadius = enemyState.radius;
-            attack.startAngle = enemyState.angle;
-            attack.currentFrame = 0;
-        }
-        
-        // Update attack frame
-        attack.currentFrame += deltaTime * 60;
-        
-        if (attack.currentFrame >= attack.duration) {
-            // Attack complete, transition to return
-            this.transitionToReturn(enemyState);
+        // Check if attack phase should complete based on timer or proximity
+        if (enemyState.phaseTimer >= enemyState.phaseTiming.attackDuration || 
+            currentRadius <= this.attackConfig.targetRadius) {
+            // Attack completed, transition to return phase
+            enemyState.phase = this.phases.RETURN;
+            enemyState.phaseTimer = 0; // Reset timer for new phase
+            console.log(`Enemy ${enemyState.index} completed attack, returning to edge`);
             return;
         }
         
-        // Calculate attack progress
-        const t = attack.currentFrame / attack.duration;
-        const pattern = this.attackPatterns[attack.pattern];
-        
-        // Calculate new radius and angle
-        const newRadius = attack.startRadius * pattern.radiusFunction(t);
-        const newAngle = attack.startAngle + pattern.angleFunction(t);
-        
-        // Update enemy position
-        const screenPos = this.tunnelSystem.polarToScreen(newRadius, newAngle);
-        enemy.x = screenPos.x;
-        enemy.y = screenPos.y;
-        
-        enemyState.radius = newRadius;
-        enemyState.angle = newAngle;
-        
-        // Calculate velocity
-        const nextT = Math.min(t + 1 / attack.duration, 1);
-        const nextRadius = attack.startRadius * pattern.radiusFunction(nextT);
-        const nextAngle = attack.startAngle + pattern.angleFunction(nextT);
-        const nextPos = this.tunnelSystem.polarToScreen(nextRadius, nextAngle);
-        
-        const velocityX = (nextPos.x - screenPos.x) * 60;
-        const velocityY = (nextPos.y - screenPos.y) * 60;
-        
-        enemy.setVelocity(velocityX, velocityY);
-        enemyState.radiusSpeed = (nextRadius - newRadius) * 60;
-        enemyState.angleSpeed = (nextAngle - newAngle) * 60;
-    }
-    
-    /**
-     * Update return phase - enemy returns to edge
-     * @param {Object} enemyState - Enemy state data
-     * @param {number} deltaTime - Time since last frame
-     */
-    updateReturnPhase(enemyState, deltaTime) {
-        const enemy = enemyState.enemy;
-        const returnData = enemyState.return;
-        
-        // Move toward edge
-        const returnAngle = Math.atan2(enemy.y - this.tunnelSystem.centerY, enemy.x - this.tunnelSystem.centerX);
-        const targetPos = this.tunnelSystem.polarToScreen(returnData.targetRadius, returnAngle);
-        
-        const dx = targetPos.x - enemy.x;
-        const dy = targetPos.y - enemy.y;
+        // Calculate direction toward center
+        const dx = GameConfig.centerX - enemyState.x;
+        const dy = GameConfig.centerY - enemyState.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance < 10) {
-            // Reached edge, destroy enemy
+        // Prevent division by zero and ensure minimum distance
+        if (distance > 0 && distance > this.attackConfig.targetRadius) {
+            // Add curve by calculating perpendicular direction
+            const perpX = -dy / distance;
+            const perpY = dx / distance;
+            
+            // Combine straight movement with curve
+            const moveX = (dx / distance) * this.attackConfig.approachSpeed;
+            const moveY = (dy / distance) * this.attackConfig.approachSpeed;
+            
+            const curveX = perpX * this.attackConfig.curveIntensity * 20;
+            const curveY = perpY * this.attackConfig.curveIntensity * 20;
+            
+            // Update position
+            enemyState.x += (moveX + curveX) * (deltaTime / 1000);
+            enemyState.y += (moveY + curveY) * (deltaTime / 1000);
+            
+            // Update sprite position
+            enemyState.sprite.x = enemyState.x;
+            enemyState.sprite.y = enemyState.y;
+        } else {
+            // If somehow stuck, force return phase
+            enemyState.phase = this.phases.RETURN;
+            enemyState.phaseTimer = 0; // Reset timer for new phase
+        }
+    }
+    
+    /**
+     * Update return phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} deltaTime - Time since last frame in ms
+     */
+    updateReturnPhase(enemyState, deltaTime) {
+        // Check if return phase should complete based on timer
+        if (enemyState.phaseTimer >= enemyState.phaseTiming.returnDuration) {
+            // Destroy enemy after return phase
             enemyState.phase = this.phases.DESTROY;
+            enemyState.sprite.destroy();
+            console.log(`Enemy ${enemyState.index} completed return phase, destroyed`);
             return;
         }
         
-        // Move toward target
-        const velocityX = (dx / distance) * returnData.returnSpeed * 60;
-        const velocityY = (dy / distance) * returnData.returnSpeed * 60;
+        // Calculate current distance from center
+        const currentRadius = Math.sqrt(
+            Math.pow(enemyState.x - GameConfig.centerX, 2) + 
+            Math.pow(enemyState.y - GameConfig.centerY, 2)
+        );
         
-        enemy.setVelocity(velocityX, velocityY);
+        // If enemy is far enough from center, destroy it
+        if (currentRadius > 450) {
+            // Destroy enemy
+            enemyState.phase = this.phases.DESTROY;
+            enemyState.sprite.destroy();
+            console.log(`Enemy ${enemyState.index} reached edge, destroyed`);
+            return;
+        }
         
-        // Update polar coordinates
-        const polar = this.tunnelSystem.screenToPolar(enemy.x, enemy.y);
-        enemyState.radius = polar.radius;
-        enemyState.angle = polar.angle;
+        // Move outward in a controlled manner
+        const speed = 80; // Reduced speed for smoother movement
         
-        enemyState.radiusSpeed = (returnData.targetRadius - polar.radius) * returnData.returnSpeed;
-        enemyState.angleSpeed = 0;
+        // Calculate direction away from center
+        const dx = enemyState.x - GameConfig.centerX;
+        const dy = enemyState.y - GameConfig.centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Prevent division by zero
+        if (distance > 0) {
+            // Move outward
+            enemyState.x += (dx / distance) * speed * (deltaTime / 1000);
+            enemyState.y += (dy / distance) * speed * (deltaTime / 1000);
+            
+            // Update sprite position
+            enemyState.sprite.x = enemyState.x;
+            enemyState.sprite.y = enemyState.y;
+        }
     }
     
     /**
-     * Update enemy visual properties (scale, rotation)
-     * @param {Object} enemyState - Enemy state data
+     * Update enemy visual properties based on depth
+     * @param {EnemyState} enemyState - Enemy state data
      */
     updateEnemyVisuals(enemyState) {
-        const enemy = enemyState.enemy;
+        const radius = Math.sqrt(
+            Math.pow(enemyState.x - GameConfig.centerX, 2) + 
+            Math.pow(enemyState.y - GameConfig.centerY, 2)
+        );
         
-        // Update scale based on depth
-        const scale = this.tunnelSystem.calculateSpriteScale(enemyState.radius);
-        enemy.setScale(scale);
-        enemyState.scale = scale;
+        // Update sprite visual properties
+        this.tunnelSystem.updateSpriteVisuals(enemyState.sprite, radius);
         
-        // Update rotation to face movement direction
-        if (enemyState.radiusSpeed !== 0 || enemyState.angleSpeed !== 0) {
-            const moveAngle = Math.atan2(enemyState.angleSpeed, enemyState.radiusSpeed);
-            enemy.rotation = moveAngle + Math.PI / 2 + Math.PI; // Correct ship orientation
-            enemyState.rotation = enemy.rotation;
-        }
+        // Update rotation based on phase and movement direction
+        this.updateEnemyRotation(enemyState);
     }
     
     /**
-     * Transition enemy to orbit phase
-     * @param {Object} enemyState - Enemy state data
+     * Update enemy rotation based on phase
+     * @param {EnemyState} enemyState - Enemy state data
      */
-    transitionToOrbit(enemyState) {
-        enemyState.phase = this.phases.ORBIT;
-        enemyState.phaseStartTime = enemyState.totalTime;
-        enemyState.spiral.completed = true;
-        
-        console.log(`Enemy ${enemyState.formationIndex} completed spiral, entering orbit`);
-    }
-    
-    /**
-     * Transition enemy to attack phase
-     * @param {Object} enemyState - Enemy state data
-     * @param {string} attackPattern - Attack pattern type
-     */
-    transitionToAttack(enemyState, attackPattern = 'direct') {
-        enemyState.phase = this.phases.ATTACK;
-        enemyState.phaseStartTime = enemyState.totalTime;
-        enemyState.attack.pattern = attackPattern;
-        enemyState.attack.currentFrame = 0;
-        enemyState.orbit.completed = true;
-        
-        console.log(`Enemy ${enemyState.formationIndex} attacking with ${attackPattern} pattern`);
-    }
-    
-    /**
-     * Transition enemy to return phase
-     * @param {Object} enemyState - Enemy state data
-     */
-    transitionToReturn(enemyState) {
-        enemyState.phase = this.phases.RETURN;
-        enemyState.phaseStartTime = enemyState.totalTime;
-        enemyState.attack.completed = true;
-        
-        console.log(`Enemy ${enemyState.formationIndex} returning to edge`);
-    }
-    
-    /**
-     * Destroy enemy
-     * @param {Object} enemyState - Enemy state data
-     */
-    destroyEnemy(enemyState) {
-        const enemy = enemyState.enemy;
-        enemy.destroy();
-        console.log(`Enemy ${enemyState.formationIndex} destroyed`);
-    }
-    
-    /**
-     * Get formation angle based on formation type and index
-     * @param {string} formationType - Formation type
-     * @param {number} index - Enemy index
-     * @returns {number} Angle in radians
-     */
-    getFormationAngle(formationType, index) {
-        switch (formationType) {
-            case 'v':
-                return (index / 4) * Math.PI * 0.6 - Math.PI * 0.3;
-            case 'line':
-                return (index / 5) * Math.PI * 0.8 - Math.PI * 0.4;
-            case 'circle':
-                return (index / 7) * Math.PI * 2;
-            case 'diamond':
-                return (index / 4) * Math.PI / 2;
+    updateEnemyRotation(enemyState) {
+        switch (enemyState.phase) {
+            case this.phases.SPIRAL:
+                // Face the direction of spiral movement
+                if (enemyState.spiralPath && enemyState.pathIndex < enemyState.spiralPath.length) {
+                    const idx = Math.floor(enemyState.pathIndex);
+                    const pathPoint = enemyState.spiralPath[idx];
+                    const nextPoint = enemyState.spiralPath[Math.min(idx + 1, enemyState.spiralPath.length - 1)];
+                    
+                    if (pathPoint && nextPoint) {
+                        const moveAngle = Math.atan2(
+                            nextPoint.radius * Math.sin(nextPoint.angle) - pathPoint.radius * Math.sin(pathPoint.angle),
+                            nextPoint.radius * Math.cos(nextPoint.angle) - pathPoint.radius * Math.cos(pathPoint.angle)
+                        );
+                        enemyState.sprite.rotation = moveAngle + Math.PI / 2;
+                    }
+                }
+                break;
+                
+            case this.phases.ORBIT:
+                // Face tangent to orbit (perpendicular to radius)
+                enemyState.sprite.rotation = enemyState.angle + Math.PI / 2;
+                break;
+                
+            case this.phases.ATTACK:
+                // Face toward center
+                const attackAngle = Math.atan2(
+                    GameConfig.centerY - enemyState.y,
+                    GameConfig.centerX - enemyState.x
+                );
+                enemyState.sprite.rotation = attackAngle + Math.PI / 2 + Math.PI;
+                break;
+                
+            case this.phases.RETURN:
+                // Face away from center (outward)
+                const returnAngle = Math.atan2(
+                    enemyState.y - GameConfig.centerY,
+                    enemyState.x - GameConfig.centerX
+                );
+                enemyState.sprite.rotation = returnAngle + Math.PI / 2;
+                break;
+                
             default:
-                return (index / 5) * Math.PI * 0.8 - Math.PI * 0.4;
+                // Keep current rotation for other phases
+                break;
         }
     }
     
     /**
-     * Get random attack pattern
-     * @returns {string} Attack pattern name
+     * Set orbit configuration
+     * @param {Object} config - Orbit configuration
      */
-    getRandomAttackPattern() {
-        const patterns = Object.keys(this.attackPatterns);
-        return patterns[Math.floor(Math.random() * patterns.length)];
+    setOrbitConfig(config) {
+        this.orbitConfig = { ...this.orbitConfig, ...config };
+    }
+    
+    /**
+     * Set attack configuration
+     * @param {Object} config - Attack configuration
+     */
+    setAttackConfig(config) {
+        this.attackConfig = { ...this.attackConfig, ...config };
+    }
+    
+    /**
+     * Force enemy to attack
+     * @param {EnemyState} enemyState - Enemy state data
+     */
+    forceAttack(enemyState) {
+        if (enemyState.phase === this.phases.ORBIT) {
+            enemyState.phase = this.phases.ATTACK;
+            enemyState.phaseTimer = 0;
+        }
+    }
+    
+    /**
+     * Get enemy phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @returns {string} Current phase
+     */
+    getEnemyPhase(enemyState) {
+        return enemyState.phase;
+    }
+    
+    /**
+     * Check if enemy is in specific phase
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {string} phase - Phase to check
+     * @returns {boolean} True if in specified phase
+     */
+    isInPhase(enemyState, phase) {
+        return enemyState.phase === phase;
+    }
+    
+    /**
+     * Apply bounds checking to keep enemies within screen bounds
+     * @param {EnemyState} enemyState - Enemy state data
+     * @param {number} prevX - Previous X position
+     * @param {number} prevY - Previous Y position
+     */
+    applyBoundsChecking(enemyState, prevX, prevY) {
+        const maxDistance = 500; // Maximum distance from center
+        const currentRadius = Math.sqrt(
+            Math.pow(enemyState.x - GameConfig.centerX, 2) + 
+            Math.pow(enemyState.y - GameConfig.centerY, 2)
+        );
+        
+        // If enemy goes too far from center, clamp position
+        if (currentRadius > maxDistance) {
+            const angle = Math.atan2(enemyState.y - GameConfig.centerY, enemyState.x - GameConfig.centerX);
+            enemyState.x = GameConfig.centerX + Math.cos(angle) * maxDistance;
+            enemyState.y = GameConfig.centerY + Math.sin(angle) * maxDistance;
+            
+            // Update sprite position
+            enemyState.sprite.x = enemyState.x;
+            enemyState.sprite.y = enemyState.y;
+            
+            // If in return phase and at max distance, destroy
+            if (enemyState.phase === this.phases.RETURN) {
+                enemyState.phase = this.phases.DESTROY;
+                enemyState.sprite.destroy();
+            }
+        }
+        
+        // Screen bounds checking
+        const margin = 50;
+        if (enemyState.x < -margin || enemyState.x > GameConfig.width + margin || 
+            enemyState.y < -margin || enemyState.y > GameConfig.height + margin) {
+            // Reset to previous position if went off-screen
+            enemyState.x = prevX;
+            enemyState.y = prevY;
+            enemyState.sprite.x = prevX;
+            enemyState.sprite.y = prevY;
+            
+            // Force return phase if somehow off-screen
+            if (enemyState.phase !== this.phases.RETURN) {
+                enemyState.phase = this.phases.RETURN;
+            }
+        }
     }
 }
 
-// Export for use in other modules
 window.EnhancedEnemyMovement = EnhancedEnemyMovement; 
