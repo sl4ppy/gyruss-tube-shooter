@@ -17,14 +17,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy Game
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
     - uses: actions/checkout@v4
     
     - name: Deploy to GitHub Pages
-      id: deployment
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
